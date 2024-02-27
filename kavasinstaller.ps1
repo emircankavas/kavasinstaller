@@ -19,21 +19,21 @@ $translations = @{
         "Installing" = "Installing";
     }
     "tr-TR" = @{
-        "Compression" = "Sıkıştırma";
-        "Development" = "Geliştirme";
-        "Documents" = "Dokümanlar";
-        "Imaging" = "Görüntüleme";
-        "Messaging" = "Mesajlaşma";
-        "Web Browsers" = "Web Tarayıcılar";
-        "File Sharing" = "Dosya Paylaşımı";
+        "Compression" = "Sikistirma";
+        "Development" = "Gelistirme";
+        "Documents" = "Dokumanlar";
+        "Imaging" = "Goruntuleme";
+        "Messaging" = "Mesajlasma";
+        "Web Browsers" = "Web Tarayicilar";
+        "File Sharing" = "Dosya Paylasimi";
         "Media" = "Medya";
         "Gaming" = "Oyunlar";
-        "Title" = "Kavas Yükleyici";
-        "Install" = "Yükle";
-        "Complete" = "Yükleme Tamamlandı";
-        "NoSelection" = "Hiçbir uygulama seçilmedi.";
-        "Waiting" = "Yüklemenin başlaması bekleniyor...";
-        "Installing" = "Yükleniyor";
+        "Title" = "Kavas Yukleyici";
+        "Install" = "Yukle";
+        "Complete" = "Yukleme Tamamlandi";
+        "NoSelection" = "Hiçbir uygulama secilmedi.";
+        "Waiting" = "Yuklemenin baslamasi bekleniyor...";
+        "Installing" = "Yukleniyor";
     }
 }
 
