@@ -61,36 +61,45 @@ $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
 
 # Define the applications with IDs, names, and categories
 $applications = @(
-    @{ Category = Get-LocalizedText -key 'Compression'; ID = '7zip.7zip'; Name = '7-Zip' },
-    @{ Category = Get-LocalizedText -key 'Compression'; ID = 'Giorgiotani.Peazip'; Name = 'PeaZip' },
-    @{ Category = Get-LocalizedText -key 'Compression'; ID = 'RARLab.WinRAR'; Name = 'WinRAR' },
-    @{ Category = Get-LocalizedText -key 'Development'; ID = 'Notepad++.Notepad++'; Name = 'Notepad++' },
-    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Adobe.Acrobat.Reader.64-bit'; Name = 'Adobe Acrobat Reader' },
-    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'TheDocumentFoundation.LibreOffice'; Name = 'LibreOffice' },
-    @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'IrfanSkiljan.IrfanView'; Name = 'IrfanView' },
-    @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'dotPDNLLC.paintdotnet'; Name = 'Paint.NET' },
-    @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'GIMP.GIMP'; Name = 'GIMP' },
-    @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'BlenderFoundation.Blender'; Name = 'Blender' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Discord.Discord'; Name = 'Discord' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Microsoft.Skype'; Name = 'Skype' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Mozilla.Thunderbird'; Name = 'Thunderbird' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Zoom.Zoom'; Name = 'Zoom' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Ablaze.Floorp'; Name = 'Floorp' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Brave.Brave'; Name = 'Brave' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Google.Chrome'; Name = 'Google Chrome' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Mozilla.Firefox'; Name = 'Firefox' },
-    @{ Category = Get-LocalizedText -key 'File Sharing'; ID = 'qBittorrent.qBittorrent'; Name = 'qBittorrent' },
-    @{ Category = Get-LocalizedText -key 'File Sharing'; ID = 'Tonec.InternetDownloadManager'; Name = 'Internet Download Manager' },
-    @{ Category = Get-LocalizedText -key 'Media'; ID = 'VideoLAN.VLC'; Name = 'VLC Media Player' },
-    @{ Category = Get-LocalizedText -key 'Media'; ID = 'CodecGuide.K-LiteCodecPack.Full'; Name = 'K-Lite Codec Pack' },
-    @{ Category = Get-LocalizedText -key 'Media'; ID = 'GOMLab.GOMPlayer'; Name = 'GOM Player' },
-    @{ Category = Get-LocalizedText -key 'Media'; ID = 'Spotify.Spotify'; Name = 'Spotify' },
-    @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'Valve.Steam'; Name = 'Steam' },
-    @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'EpicGames.EpicGamesLauncher'; Name = 'Epic Games Launcher' }
+    @{ Category = 'Compression'; ID = '7zip.7zip'; Name = '7-Zip' },
+    @{ Category = 'Compression'; ID = 'Giorgiotani.Peazip'; Name = 'PeaZip' },
+    @{ Category = 'Compression'; ID = 'RARLab.WinRAR'; Name = 'WinRAR' },
+    @{ Category = 'Development'; ID = 'Notepad++.Notepad++'; Name = 'Notepad++' },
+    @{ Category = 'Documents'; ID = 'Adobe.Acrobat.Reader.64-bit'; Name = 'Adobe Acrobat Reader' },
+    @{ Category = 'Documents'; ID = 'TheDocumentFoundation.LibreOffice'; Name = 'LibreOffice' },
+    @{ Category = 'Imaging'; ID = 'IrfanSkiljan.IrfanView'; Name = 'IrfanView' },
+    @{ Category = 'Imaging'; ID = 'dotPDNLLC.paintdotnet'; Name = 'Paint.NET' },
+    @{ Category = 'Imaging'; ID = 'GIMP.GIMP'; Name = 'GIMP' },
+    @{ Category = 'Imaging'; ID = 'BlenderFoundation.Blender'; Name = 'Blender' },
+    @{ Category = 'Messaging'; ID = 'Discord.Discord'; Name = 'Discord' },
+    @{ Category = 'Messaging'; ID = 'Microsoft.Skype'; Name = 'Skype' },
+    @{ Category = 'Messaging'; ID = 'Mozilla.Thunderbird'; Name = 'Thunderbird' },
+    @{ Category = 'Messaging'; ID = 'Zoom.Zoom'; Name = 'Zoom' },
+    @{ Category = 'Web Browsers'; ID = 'Ablaze.Floorp'; Name = 'Floorp' },
+    @{ Category = 'Web Browsers'; ID = 'Brave.Brave'; Name = 'Brave' },
+    @{ Category = 'Web Browsers'; ID = 'Google.Chrome'; Name = 'Google Chrome' },
+    @{ Category = 'Web Browsers'; ID = 'Mozilla.Firefox'; Name = 'Firefox' },
+    @{ Category = 'File Sharing'; ID = 'qBittorrent.qBittorrent'; Name = 'qBittorrent' },
+    @{ Category = 'File Sharing'; ID = 'Tonec.InternetDownloadManager'; Name = 'Internet Download Manager' },
+    @{ Category = 'Media'; ID = 'VideoLAN.VLC'; Name = 'VLC Media Player' },
+    @{ Category = 'Media'; ID = 'CodecGuide.K-LiteCodecPack.Full'; Name = 'K-Lite Codec Pack' },
+    @{ Category = 'Media'; ID = 'GOMLab.GOMPlayer'; Name = 'GOM Player' },
+    @{ Category = 'Media'; ID = 'Spotify.Spotify'; Name = 'Spotify' },
+    @{ Category = 'Gaming'; ID = 'Valve.Steam'; Name = 'Steam' },
+    @{ Category = 'Gaming'; ID = 'EpicGames.EpicGamesLauncher'; Name = 'Epic Games Launcher' }
 )
 
 # Group applications by category
-$groupedApplications = $applications | Group-Object Category
+$groupedApplications = @{}
+foreach ($obj in $applications) {
+    # Check if the hashtable does not contain the category key and add it if necessary
+    if (-not $groupedApplications.ContainsKey($obj.Category)) {
+        $groupedApplications[$obj.Category] = @()
+    }
+    
+    # Add the object to the appropriate category in the hashtable
+    $groupedApplications[$obj.Category] += $obj
+}
 
 # Calculate the number of columns needed (max 2 categories per column)
 $columnsNeeded = [math]::Floor($groupedApplications.Count / 2.0)
@@ -105,7 +114,10 @@ $columnHeight = 0
 $columnIndex = 0
 
 # Create UI elements grouped by category and adjust for columns
-foreach ($group in $groupedApplications) {
+
+$idx = 0
+
+foreach ($group in $groupedApplications.Keys) {
     # Reset yPos for each new column, and adjust xPos based on columnIndex
     if ($columnIndex % 2 -eq 0 -and $columnIndex -ne 0) {
         $xPos += $columnWidth
@@ -114,14 +126,14 @@ foreach ($group in $groupedApplications) {
 
     # Create a label for the category
     $label = New-Object System.Windows.Forms.Label
-    $label.Text = $group.Name
+    $label.Text = $group
     $label.Location = New-Object System.Drawing.Point($xPos, $yPos)
     $label.AutoSize = $true
     $form.Controls.Add($label)
     $yPos += 20
 
     # Create a checkbox for each application in the category
-    foreach ($app in $group.Group) {
+    foreach ($app in $groupedApplications[$group]) {
         $checkbox = New-Object System.Windows.Forms.CheckBox
         $checkbox.Text = $app.Name
         $checkbox.Tag = $app.ID # Use the Tag property to store the application ID
@@ -136,9 +148,10 @@ foreach ($group in $groupedApplications) {
     $columnHeight = [math]::Max($columnHeight, $yPos) # Track max column height
 
     # Increment column index after every second category
-    if (($groupedApplications.IndexOf($group) + 1) % 2 -eq 0) {
+    if (($idx + 1) % 2 -eq 0) {
         $columnIndex++
     }
+    $idx++
 }
 
 # Adjust yPos for the progress bar and install button based on the tallest column
