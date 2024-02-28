@@ -111,6 +111,7 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Media'; ID = 'Spotify.Spotify'; Name = 'Spotify' },
     @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'Valve.Steam'; Name = 'Steam' },
     @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'EpicGames.EpicGamesLauncher'; Name = 'Epic Games Launcher' },
+    @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'Ubisoft.Connect'; Name = 'Ubisoft Connect' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'TeamViewer.TeamViewer'; Name = 'TeamViewer' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'CodeSector.TeraCopy'; Name = 'TeraCopy' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'WinDirStat.WinDirStat'; Name = 'WinDirStat' },
