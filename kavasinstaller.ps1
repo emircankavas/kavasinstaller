@@ -1,4 +1,5 @@
 Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 
 $translations = @{
     "en-US" = @{
@@ -18,10 +19,11 @@ $translations = @{
         "NoSelection" = "No applications selected.";
         "Waiting" = "Waiting for installation to start...";
         "Installing" = "Installing";
+        "wingetNotInstalled" = "winget is not installed. Please install it manually through the Microsoft Store by searching for 'App Installer' or check the documentation for your Windows version for alternative installation methods."
     }
     "tr-TR" = @{
-        "Compression" = "Sıkıştırtma";
-        "Development" = "Geliştirtme";
+        "Compression" = "Sıkıştırma";
+        "Development" = "Geliştirme";
         "Documents" = "Dokümanlar";
         "Imaging" = "Görüntüleme";
         "Messaging" = "Mesajlaşma";
@@ -36,6 +38,7 @@ $translations = @{
         "NoSelection" = "Hiçbir uygulama seçilmedi.";
         "Waiting" = "Yüklemenin başlaması bekleniyor...";
         "Installing" = "Yükleniyor";
+        "wingetNotInstalled" = "winget yüklü değil. Lütfen 'App Installer' uygulamasını Microsoft Store'dan arayarak manuel olarak yükleyin veya alternatif yükleme yöntemleri için Windows sürümünüzün belgelerine bakın."
     }
 }
 
@@ -52,6 +55,13 @@ function Get-LocalizedText {
     } else {
         return "Undefined"
     }
+}
+
+
+# Check if winget is available
+if (-not(Get-Command winget -ErrorAction SilentlyContinue)) {
+    Write-Output $(Get-LocalizedText -key 'wingetNotInstalled')
+    exit
 }
 
 # Create a new form
@@ -76,6 +86,8 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Adobe.Acrobat.Reader.64-bit'; Name = 'Adobe Acrobat Reader' },
     @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Foxit.FoxitReader'; Name = 'Foxit PDF Reader' },
     @{ Category = Get-LocalizedText -key 'Documents'; ID = 'TheDocumentFoundation.LibreOffice'; Name = 'LibreOffice' },
+    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Kingsoft.WPSOffice.CN'; Name = 'WPS Office' },
+    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Apache.OpenOffice'; Name = 'OpenOffice' },
     @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'IrfanSkiljan.IrfanView'; Name = 'IrfanView' },
     @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'dotPDNLLC.paintdotnet'; Name = 'Paint.NET' },
     @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'GIMP.GIMP'; Name = 'GIMP' },
@@ -121,32 +133,26 @@ foreach ($obj in $applications) {
 $columnsNeeded = [math]::Floor($groupedApplications.Count / 2.0)
 $columnWidth = 200 # Define column width
 $formWidth = $columnWidth * $columnsNeeded # Calculate form width based on columns needed
-$form.Size = New-Object System.Drawing.Size($formWidth, 600) # Set form size dynamically
+$form.Width = $formWidth
+$form.Height = 600
 
 # Layout variables
 $xPos = 10
 $yPos = 10
 $columnHeight = 0
-$columnIndex = 0
 
 # Create UI elements grouped by category and adjust for columns
 
-$idx = 0
+$idx = 1
 
 foreach ($group in $groupedApplications.Keys) {
-    # Reset yPos for each new column, and adjust xPos based on columnIndex
-    if ($columnIndex % 2 -eq 0 -and $columnIndex -ne 0) {
-        $xPos += $columnWidth
-        $yPos = 10
-    }
-
     # Create a label for the category
     $label = New-Object System.Windows.Forms.Label
     $label.Text = $group
     $label.Location = New-Object System.Drawing.Point($xPos, $yPos)
     $label.AutoSize = $true
     $form.Controls.Add($label)
-    $yPos += 20
+    $yPos += 30
 
     # Create a checkbox for each application in the category
     foreach ($app in $groupedApplications[$group]) {
@@ -162,11 +168,13 @@ foreach ($group in $groupedApplications.Keys) {
 
     $yPos += 10 # Add some space before the next category
     $columnHeight = [math]::Max($columnHeight, $yPos) # Track max column height
-
     # Increment column index after every second category
-    if (($idx + 1) % 2 -eq 0) {
-        $columnIndex++
+    # Reset yPos for each new column, and adjust xPos based on columnIndex
+    if (($idx % 2) -eq 0) {
+        $xPos += $columnWidth
+        $yPos = 10
     }
+
     $idx++
 }
 
@@ -181,14 +189,14 @@ $progressBar.Minimum = 0
 $progressBar.Maximum = 100
 $progressBar.Value = 0
 $progressBar.Step = 1
-$progressBarSize = $formWidth - 20 # Subtract 20 for padding
-$progressBar.Size = New-Object System.Drawing.Size($progressBarSize, 20) # Span across the form width
+$progressBarSize = $formWidth - 105
+$progressBar.Size = New-Object System.Drawing.Size($progressBarSize, 10) # Span across the form width
 $form.Controls.Add($progressBar)
 
 
 # Initialize and place the label for current installing program above the progress bar
 $installingLabel = New-Object System.Windows.Forms.Label
-$installingLabelLocation = $yPos - 20
+$installingLabelLocation = $yPos + 25
 $installingLabel.Location = New-Object System.Drawing.Point(10, $installingLabelLocation) # Position above the progress bar
 $installingLabel.Size = New-Object System.Drawing.Size($progressBarSize, 20) # Same width as the progress bar for alignment
 $installingLabel.Text = Get-LocalizedText -key 'Waiting'
@@ -198,14 +206,18 @@ $form.Controls.Add($installingLabel)
 $yPos += 20 # Adjust if needed based on actual layout
 
 # Update yPos for the install button, adding space after the progress bar
-$yPos += 30
+$yPos += 50
 
 # Initialize and center the install button below the progress bar
 $buttonInstall = New-Object System.Windows.Forms.Button
 $buttonInstall.Text = Get-LocalizedText -key 'Install'
-$buttonInstallLocation = ($formWidth -100) / 2 # Center the button
+$buttonInstallLocation = ($formWidth - 200) / 2 # Center the button
 $buttonInstall.Location = New-Object System.Drawing.Point($buttonInstallLocation, $yPos) # Center the button
-$buttonInstall.Size = New-Object System.Drawing.Size(100, 23)
+$buttonInstall.Size = New-Object System.Drawing.Size(100, 50)
+$icon = [System.Drawing.Icon]::ExtractAssociatedIcon([System.Environment]::GetFolderPath('System') + '\msiexec.exe')
+$buttonInstall.Image = $icon.ToBitmap()
+$buttonInstall.TextAlign = 'MiddleRight'
+$buttonInstall.TextImageRelation = 'ImageBeforeText'
 $form.Controls.Add($buttonInstall)
 
 
@@ -227,7 +239,7 @@ $buttonInstall.Add_Click({
         $progressBar.Maximum = $selectedApps.Count
         foreach ($app in $selectedApps) {
             # Update label with the current installing application's name
-            $installingLabel.Text = "$(Get-LocalizedText -key 'Installing'): $($app.Name)"
+            $installingLabel.Text = "[$($ProgressBar.Value + 1)/$($selectedApps.Count)] $(Get-LocalizedText -key 'Installing'): $($app.Name)"
             winget.exe install $app.ID -e
             $progressBar.PerformStep()
         }
@@ -240,6 +252,37 @@ $buttonInstall.Add_Click({
 
 # Add the install button to the form
 $form.Controls.Add($buttonInstall)
+
+# About button
+#$aboutButton = New-Object System.Windows.Forms.Button
+#$aboutButton.Text = 'About'
+#$aboutButton.Location = New-Object System.Drawing.Point(($formWidth - 300), $yPos)
+#
+#$icon = [System.Drawing.Icon]::ExtractAssociatedIcon([System.Environment]::GetFolderPath('System') + '\msinfo32.exe')
+#$aboutButton.Image = $icon.ToBitmap()
+#$aboutButton.TextAlign = 'MiddleRight'
+#$aboutButton.TextImageRelation = 'ImageBeforeText'
+#
+#
+#$aboutButton.Size = New-Object System.Drawing.Size(100, 50)
+#$aboutButton.Add_Click({
+#    # About dialog form
+#    $aboutForm = New-Object System.Windows.Forms.Form
+#    $aboutForm.StartPosition = 'CenterScreen'
+#    $aboutForm.Size = New-Object System.Drawing.Size(300, 200)
+#    $aboutForm.Text = 'About Developer'
+#
+#    # Developer info
+#    $infoLabel = New-Object System.Windows.Forms.Label
+#    $infoLabel.Text = "Developer: Emircan Kavas`nEmail: emircankavas@yandex.com`nWebsite: https://kavas.dev"
+#    $infoLabel.Location = New-Object System.Drawing.Point(10, 10)
+#    $infoLabel.Size = New-Object System.Drawing.Size(280, 120)
+#    $infoLabel.AutoSize = $true
+#
+#    $aboutForm.Controls.Add($infoLabel)
+#    $aboutForm.ShowDialog()
+#})
+#$form.Controls.Add($aboutButton)
 
 # Show the form
 $form.ShowDialog()
