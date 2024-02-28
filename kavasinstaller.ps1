@@ -65,7 +65,14 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Compression'; ID = 'Giorgiotani.Peazip'; Name = 'PeaZip' },
     @{ Category = Get-LocalizedText -key 'Compression'; ID = 'RARLab.WinRAR'; Name = 'WinRAR' },
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'Notepad++.Notepad++'; Name = 'Notepad++' },
+    @{ Category = Get-LocalizedText -key 'Development'; ID = 'Microsoft.VisualStudioCode'; Name = 'Visual Studio Code' },
+    @{ Category = Get-LocalizedText -key 'Development'; ID = 'Python.Python.3.12'; Name = 'Python 3.12' },
+    @{ Category = Get-LocalizedText -key 'Development'; ID = 'PuTTY.PuTTY'; Name = 'PuTTY' },
+    @{ Category = Get-LocalizedText -key 'Development'; ID = 'WinSCP.WinSCP'; Name = 'WinSCP' },
+    @{ Category = Get-LocalizedText -key 'Development'; ID = 'WinMerge.WinMerge'; Name = 'WinMerge' },
+    @{ Category = Get-LocalizedText -key 'Development'; ID = 'Termius.Termius'; Name = 'Termius' },
     @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Adobe.Acrobat.Reader.64-bit'; Name = 'Adobe Acrobat Reader' },
+    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Foxit.FoxitReader'; Name = 'Foxit PDF Reader' },
     @{ Category = Get-LocalizedText -key 'Documents'; ID = 'TheDocumentFoundation.LibreOffice'; Name = 'LibreOffice' },
     @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'IrfanSkiljan.IrfanView'; Name = 'IrfanView' },
     @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'dotPDNLLC.paintdotnet'; Name = 'Paint.NET' },
@@ -86,7 +93,14 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Media'; ID = 'GOMLab.GOMPlayer'; Name = 'GOM Player' },
     @{ Category = Get-LocalizedText -key 'Media'; ID = 'Spotify.Spotify'; Name = 'Spotify' },
     @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'Valve.Steam'; Name = 'Steam' },
-    @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'EpicGames.EpicGamesLauncher'; Name = 'Epic Games Launcher' }
+    @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'EpicGames.EpicGamesLauncher'; Name = 'Epic Games Launcher' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'TeamViewer.TeamViewer'; Name = 'TeamViewer' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'CodeSector.TeraCopy'; Name = 'TeraCopy' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'WinDirStat.WinDirStat'; Name = 'WinDirStat' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Open-Shell.Open-Shell-Menu'; Name = 'Open Shell' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Piriform.CCleaner'; Name = 'CCleaner' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'AntibodySoftware.WizTree'; Name = 'WizTree' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'TeamViewer.TeamViewer'; Name = 'TeamViewer' }
 )
 
 # Group applications by category
