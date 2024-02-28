@@ -1,1 +1,1 @@
-```iwr -useb http://tinyurl.com/kavasinstaller | iex```
+```irm 'https://tinyurl.com/kavasinstaller' | iex```
