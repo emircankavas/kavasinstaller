@@ -212,10 +212,7 @@ $buttonInstall.Add_Click({
         foreach ($app in $selectedApps) {
             # Update label with the current installing application's name
             $installingLabel.Text = "$(Get-LocalizedText -key 'Installing'): $($app.Name)"
-            
-            # Simulate installation process (Replace with actual installation command)
-            # Example: winget install $app.ID
-            winget install $app.ID
+            winget.exe install $app.ID -e
             $progressBar.PerformStep()
         }
         [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "Complete"))
