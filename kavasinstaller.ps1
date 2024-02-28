@@ -215,7 +215,7 @@ $buttonInstall.Add_Click({
             
             # Simulate installation process (Replace with actual installation command)
             # Example: winget install $app.ID
-            Start-Sleep -Seconds 2 # Simulate time taken for installation
+            winget install $app.ID
             $progressBar.PerformStep()
         }
         [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "Complete"))
