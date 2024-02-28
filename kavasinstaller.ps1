@@ -19,8 +19,8 @@ $translations = @{
         "Installing" = "Installing";
     }
     "tr-TR" = @{
-        "Compression" = "Sıkıştırma";
-        "Development" = "Geliştirme";
+        "Compression" = "Sıkıştırtma";
+        "Development" = "Geliştirtme";
         "Documents" = "Dokümanlar";
         "Imaging" = "Görüntüleme";
         "Messaging" = "Mesajlaşma";
@@ -216,7 +216,7 @@ $buttonInstall.Add_Click({
             $progressBar.PerformStep()
         }
         [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "Complete"))
-        $installingLabel.Text = "Installation Complete"
+        $installingLabel.Text = Get-LocalizedText -key "Complete"
     } else {
         [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "NoSelection"))
     }
