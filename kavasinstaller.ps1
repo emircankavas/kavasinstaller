@@ -69,9 +69,8 @@ if (-not(Get-Command winget -ErrorAction SilentlyContinue)) {
 # Create a new form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = Get-LocalizedText -key 'Title'
-$form.AutoSize = $true # Enable auto-sizing of the form
-$form.AutoSizeMode = 'GrowAndShrink' # Allow the form to shrink or grow according to its content
 $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
+$form.FormBorderStyle = 'FixedDialog'
 
 # Define the applications with IDs, names, and categories
 $applications = @(
@@ -122,12 +121,12 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Open-Shell.Open-Shell-Menu'; Name = 'Open Shell' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Piriform.CCleaner'; Name = 'CCleaner' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'AntibodySoftware.WizTree'; Name = 'WizTree' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'TeamViewer.TeamViewer'; Name = 'TeamViewer' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Guru3D.Afterburner'; Name = 'MSI Afterburner' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'FxSoundLLC.FxSound'; Name = 'FxSound' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'HiBitSoftware.StartUpManager'; Name = 'HiBit StartUp Manager' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'HiBitSoftware.HiBitUninstaller'; Name = 'HiBit Uninstaller' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'RevoUninstaller.RevoUninstaller'; Name = 'Revo Uninstaller' }
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'RevoUninstaller.RevoUninstaller'; Name = 'Revo Uninstaller' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Nilesoft.Shell'; Name = 'Nilesoft Shell' }
 )
 
 # Group applications by category
@@ -142,12 +141,11 @@ foreach ($obj in $applications) {
     $groupedApplications[$obj.Category] += $obj
 }
 
-# Calculate the number of columns needed (max 2 categories per column)
-$columnsNeeded = [math]::Floor($groupedApplications.Count / 2.0)
+$categoryPerColumn = 3
+
+$columnsNeeded = [math]::Floor($groupedApplications.Count / $categoryPerColumn)
 $columnWidth = 200 # Define column width
 $formWidth = $columnWidth * $columnsNeeded # Calculate form width based on columns needed
-$form.Width = $formWidth
-$form.Height = 600
 
 # Layout variables
 $xPos = 10
@@ -183,7 +181,7 @@ foreach ($group in $groupedApplications.Keys) {
     $columnHeight = [math]::Max($columnHeight, $yPos) # Track max column height
     # Increment column index after every second category
     # Reset yPos for each new column, and adjust xPos based on columnIndex
-    if (($idx % 2) -eq 0) {
+    if (($idx % $categoryPerColumn) -eq 0) {
         $xPos += $columnWidth
         $yPos = 10
     }
@@ -202,7 +200,7 @@ $progressBar.Minimum = 0
 $progressBar.Maximum = 100
 $progressBar.Value = 0
 $progressBar.Step = 1
-$progressBarSize = $formWidth - 30
+$progressBarSize = $formWidth + 165
 $progressBar.Size = New-Object System.Drawing.Size($progressBarSize, 10) # Span across the form width
 $form.Controls.Add($progressBar)
 
@@ -224,7 +222,7 @@ $yPos += 50
 # Initialize and center the install button below the progress bar
 $buttonInstall = New-Object System.Windows.Forms.Button
 $buttonInstall.Text = Get-LocalizedText -key 'Install'
-$buttonInstallLocation = ($formWidth - 100) / 2 # Center the button
+$buttonInstallLocation = ($formWidth + 100) / 2 # Center the button
 $buttonInstall.Location = New-Object System.Drawing.Point($buttonInstallLocation, $yPos) # Center the button
 $buttonInstall.Size = New-Object System.Drawing.Size(100, 50)
 $icon = [System.Drawing.Icon]::ExtractAssociatedIcon([System.Environment]::GetFolderPath('System') + '\msiexec.exe')
@@ -236,6 +234,7 @@ $form.Controls.Add($buttonInstall)
 
 # Add an event handler for the install button click
 $buttonInstall.Add_Click({
+    $buttonInstall.Enabled = $false
     # Initialize an array to hold selected applications
     $selectedApps = @()
 
@@ -261,41 +260,12 @@ $buttonInstall.Add_Click({
     } else {
         [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "NoSelection"))
     }
+    $buttonInstall.Enabled = $true
 })
 
-# Add the install button to the form
 $form.Controls.Add($buttonInstall)
 
-# About button
-#$aboutButton = New-Object System.Windows.Forms.Button
-#$aboutButton.Text = 'About'
-#$aboutButton.Location = New-Object System.Drawing.Point(($formWidth - 300), $yPos)
-#
-#$icon = [System.Drawing.Icon]::ExtractAssociatedIcon([System.Environment]::GetFolderPath('System') + '\msinfo32.exe')
-#$aboutButton.Image = $icon.ToBitmap()
-#$aboutButton.TextAlign = 'MiddleRight'
-#$aboutButton.TextImageRelation = 'ImageBeforeText'
-#
-#
-#$aboutButton.Size = New-Object System.Drawing.Size(100, 50)
-#$aboutButton.Add_Click({
-#    # About dialog form
-#    $aboutForm = New-Object System.Windows.Forms.Form
-#    $aboutForm.StartPosition = 'CenterScreen'
-#    $aboutForm.Size = New-Object System.Drawing.Size(300, 200)
-#    $aboutForm.Text = 'About Developer'
-#
-#    # Developer info
-#    $infoLabel = New-Object System.Windows.Forms.Label
-#    $infoLabel.Text = "Developer: Emircan Kavas`nEmail: emircankavas@yandex.com`nWebsite: https://kavas.dev"
-#    $infoLabel.Location = New-Object System.Drawing.Point(10, 10)
-#    $infoLabel.Size = New-Object System.Drawing.Size(280, 120)
-#    $infoLabel.AutoSize = $true
-#
-#    $aboutForm.Controls.Add($infoLabel)
-#    $aboutForm.ShowDialog()
-#})
-#$form.Controls.Add($aboutButton)
+$form.Width = $formWidth + 200
+$form.Height = $yPos + 100
 
-# Show the form
 $form.ShowDialog()
