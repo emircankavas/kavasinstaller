@@ -20,6 +20,7 @@ $translations = @{
         "NoSelection" = "No applications selected.";
         "Waiting" = "Waiting for installation to start...";
         "Installing" = "Installing";
+        "Search" = "Start typing to search";
         "wingetNotInstalled" = "winget is not installed. Please install it manually through the Microsoft Store by searching for 'App Installer' or check the documentation for your Windows version for alternative installation methods."
     }
     "tr-TR" = @{
@@ -40,6 +41,7 @@ $translations = @{
         "NoSelection" = "Hiçbir uygulama seçilmedi.";
         "Waiting" = "Yüklemenin başlaması bekleniyor...";
         "Installing" = "Yükleniyor";
+        "Search" = "Aramak için yazmaya başlayın";
         "wingetNotInstalled" = "winget yüklü değil. Lütfen 'App Installer' uygulamasını Microsoft Store'dan arayarak manuel olarak yükleyin veya alternatif yükleme yöntemleri için Windows sürümünüzün belgelerine bakın."
     }
 }
@@ -155,9 +157,30 @@ $xPos = 10
 $yPos = 10
 $columnHeight = 0
 
+# Create search box
+$searchBox = New-Object System.Windows.Forms.TextBox
+$searchBox.Location = New-Object System.Drawing.Point(($formWidth / 2), $yPos)
+$searchBox.Size = New-Object System.Drawing.Size((($formWidth + 165) / 4), 20)
+$searchBox.Text = Get-LocalizedText -key "Search"
+$searchBox.Add_TextChanged({
+    $searchText = $searchBox.Text.ToLower()
+    # Check if the checkbox text contains the search text, if so, make the font bold
+    foreach ($checkbox in $checkboxes) {
+        if ($checkbox.Text.ToLower().Contains($searchText)) {
+            $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Bold)
+        } else {
+            $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Regular)
+        }
+    }
+})
+$form.Controls.Add($searchBox)
+
+$yPos += 30
+
 # Create UI elements grouped by category and adjust for columns
 
 $idx = 1
+$checkboxes = @()
 
 foreach ($group in $groupedApplications.Keys) {
     # Create a label for the category
@@ -178,6 +201,7 @@ foreach ($group in $groupedApplications.Keys) {
         $checkbox.AutoSize = $true
         $form.Controls.Add($checkbox)
         $yPos += 20
+        $checkboxes += $checkbox
     }
 
     $yPos += 10 # Add some space before the next category
@@ -186,7 +210,7 @@ foreach ($group in $groupedApplications.Keys) {
     # Reset yPos for each new column, and adjust xPos based on columnIndex
     if (($idx % $categoryPerColumn) -eq 0) {
         $xPos += $columnWidth
-        $yPos = 10
+        $yPos = 40
     }
 
     $idx++
