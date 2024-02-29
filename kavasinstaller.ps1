@@ -279,7 +279,7 @@ $buttonInstall.Add_Click({
         foreach ($app in $selectedApps) {
             # Update label with the current installing application's name
             $installingLabel.Text = "[$($ProgressBar.Value + 1)/$($selectedApps.Count)] $(Get-LocalizedText -key 'Installing'): $($app.Name)"
-            winget.exe install $app.ID -e
+            winget.exe install $app.ID -e --accept-package-agreements
             $progressBar.PerformStep()
         }
         [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "Complete"))
