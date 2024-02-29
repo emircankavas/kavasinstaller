@@ -84,7 +84,7 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'PuTTY.PuTTY'; Name = 'PuTTY' },
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'WinSCP.WinSCP'; Name = 'WinSCP' },
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'WinMerge.WinMerge'; Name = 'WinMerge' },
-    @{ Category = Get-LocalizedText -key 'Dependencies'; ID = 'abbodi1406.vcredist'; Name = 'Microsoft Visual C++ Runtimes AIO' },
+    @{ Category = Get-LocalizedText -key 'Dependencies'; ID = 'abbodi1406.vcredist'; Name = 'MS Visual C++ AIO' },
     @{ Category = Get-LocalizedText -key 'Dependencies'; ID = 'Microsoft.DirectX'; Name = 'DirectX' },
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'Termius.Termius'; Name = 'Termius' },
     @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Adobe.Acrobat.Reader.64-bit'; Name = 'Adobe Acrobat Reader' },
