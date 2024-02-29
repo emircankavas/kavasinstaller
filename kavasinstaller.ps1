@@ -102,7 +102,7 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Microsoft.Skype'; Name = 'Skype' },
     @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Mozilla.Thunderbird'; Name = 'Thunderbird' },
     @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Zoom.Zoom'; Name = 'Zoom' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'WhatsApp.WhatsApp'; Name = 'WhatsApp' },
+    @{ Category = Get-LocalizedText -key 'Messaging'; ID = '9NKSQGP7F2NH'; Name = 'WhatsApp' },
     @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Telegram.TelegramDesktop'; Name = 'Telegram' },
     @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Ablaze.Floorp'; Name = 'Floorp' },
     @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Brave.Brave'; Name = 'Brave' },
