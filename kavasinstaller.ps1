@@ -13,6 +13,7 @@ $translations = @{
         "Media" = "Media";
         "Gaming" = "Gaming";
         "Utilities" = "Utilities";
+        "Dependencices" = "Dependencies";
         "Title" = "Kavas Installer v0.1";
         "Install" = "Install";
         "Complete" = "Installation Complete";
@@ -32,6 +33,7 @@ $translations = @{
         "Media" = "Medya";
         "Gaming" = "Oyunlar";
         "Utilities" = "Araçlar";
+        "Dependencies" = "Bağımlılıklar";
         "Title" = "Kavas Yükleyici v0.1";
         "Install" = "Yükle";
         "Complete" = "Yükleme Tamamlandı";
@@ -82,6 +84,8 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'PuTTY.PuTTY'; Name = 'PuTTY' },
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'WinSCP.WinSCP'; Name = 'WinSCP' },
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'WinMerge.WinMerge'; Name = 'WinMerge' },
+    @{ Category = Get-LocalizedText -key 'Dependencies'; ID = 'abbodi1406.vcredist'; Name = 'Microsoft Visual C++ Runtimes AIO' },
+    @{ Category = Get-LocalizedText -key 'Dependencies'; ID = 'Microsoft.DirectX'; Name = 'DirectX' },
     @{ Category = Get-LocalizedText -key 'Development'; ID = 'Termius.Termius'; Name = 'Termius' },
     @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Adobe.Acrobat.Reader.64-bit'; Name = 'Adobe Acrobat Reader' },
     @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Foxit.FoxitReader'; Name = 'Foxit PDF Reader' },
@@ -118,7 +122,12 @@ $applications = @(
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Open-Shell.Open-Shell-Menu'; Name = 'Open Shell' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Piriform.CCleaner'; Name = 'CCleaner' },
     @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'AntibodySoftware.WizTree'; Name = 'WizTree' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'TeamViewer.TeamViewer'; Name = 'TeamViewer' }
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'TeamViewer.TeamViewer'; Name = 'TeamViewer' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Guru3D.Afterburner'; Name = 'MSI Afterburner' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'FxSoundLLC.FxSound'; Name = 'FxSound' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'HiBitSoftware.StartUpManager'; Name = 'HiBit StartUp Manager' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'HiBitSoftware.HiBitUninstaller'; Name = 'HiBit Uninstaller' },
+    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'RevoUninstaller.RevoUninstaller'; Name = 'Revo Uninstaller' }
 )
 
 # Group applications by category
