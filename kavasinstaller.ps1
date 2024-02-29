@@ -202,7 +202,7 @@ $progressBar.Minimum = 0
 $progressBar.Maximum = 100
 $progressBar.Value = 0
 $progressBar.Step = 1
-$progressBarSize = $formWidth - 105
+$progressBarSize = $formWidth - 30
 $progressBar.Size = New-Object System.Drawing.Size($progressBarSize, 10) # Span across the form width
 $form.Controls.Add($progressBar)
 
@@ -224,7 +224,7 @@ $yPos += 50
 # Initialize and center the install button below the progress bar
 $buttonInstall = New-Object System.Windows.Forms.Button
 $buttonInstall.Text = Get-LocalizedText -key 'Install'
-$buttonInstallLocation = ($formWidth - 200) / 2 # Center the button
+$buttonInstallLocation = ($formWidth - 100) / 2 # Center the button
 $buttonInstall.Location = New-Object System.Drawing.Point($buttonInstallLocation, $yPos) # Center the button
 $buttonInstall.Size = New-Object System.Drawing.Size(100, 50)
 $icon = [System.Drawing.Icon]::ExtractAssociatedIcon([System.Environment]::GetFolderPath('System') + '\msiexec.exe')
