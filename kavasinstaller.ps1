@@ -358,6 +358,7 @@ foreach ($group in $groupedApplications) {
         $checkbox.AutoSize = $true
         $checkbox.BackColor = [System.Drawing.Color]::Transparent
         $checkbox.ForeColor = [System.Drawing.Color]::White
+
         $form.Controls.Add($checkbox)
         $yPos += 20
         $checkboxes += $checkbox
