@@ -1,8 +1,6 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-$ProgressPreference = 'SilentlyContinue'
-
 $translations = @{
     "en-US" = @{
         "Compression" = "Compression";
@@ -68,6 +66,7 @@ function Get-Image {
         [string]$url
     )
     $tempFilePath = [System.IO.Path]::GetTempFileName()
+    $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $url -OutFile $tempFilePath
 
     return $tempFilePath
