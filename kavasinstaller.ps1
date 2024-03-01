@@ -1,6 +1,8 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+$appVersion = "0.1"
+
 $translations = @{
     "en-US" = @{
         "Compression" = "Compression";
@@ -14,7 +16,7 @@ $translations = @{
         "Gaming" = "Gaming";
         "Utilities" = "Utilities";
         "Dependencices" = "Dependencies";
-        "Title" = "Kavas Installer v0.1";
+        "Title" = "Kavas Installer $appVersion";
         "Install" = "Install";
         "Complete" = "Installation Complete";
         "NoSelection" = "No applications selected.";
@@ -35,7 +37,7 @@ $translations = @{
         "Gaming" = "Oyunlar";
         "Utilities" = "Araçlar";
         "Dependencies" = "Bağımlılıklar";
-        "Title" = "Kavas Yükleyici v0.1";
+        "Title" = "Kavas Yükleyici $appVersion";
         "Install" = "Yükle";
         "Complete" = "Yükleme Tamamlandı";
         "NoSelection" = "Hiçbir uygulama seçilmedi.";
@@ -342,8 +344,12 @@ $buttonInstall.Location = New-Object System.Drawing.Point($buttonInstallLocation
 $buttonInstall.Size = New-Object System.Drawing.Size(100, 50)
 $icon = [System.Drawing.Icon]::ExtractAssociatedIcon([System.Environment]::GetFolderPath('System') + '\msiexec.exe')
 $buttonInstall.Image = $icon.ToBitmap()
+
+$buttonInstall.BackColor = [System.Drawing.Color]::Transparent
 $buttonInstall.TextAlign = 'MiddleRight'
 $buttonInstall.TextImageRelation = 'ImageBeforeText'
+$buttonInstall.ForeColor = [System.Drawing.Color]::White
+$buttonInstall.Font = New-Object System.Drawing.Font($buttonInstall.Font, [System.Drawing.FontStyle]::Bold)
 $form.Controls.Add($buttonInstall)
 
 
