@@ -61,6 +61,16 @@ function Get-LocalizedText {
     }
 }
 
+function Get-Image {
+    param (
+        [string]$url
+    )
+    $tempFilePath = [System.IO.Path]::GetTempFileName()
+    Invoke-WebRequest -Uri $url -OutFile $tempFilePath
+
+    return $tempFilePath
+}
+
 
 # Check if winget is available
 if (-not(Get-Command winget -ErrorAction SilentlyContinue)) {
@@ -68,83 +78,142 @@ if (-not(Get-Command winget -ErrorAction SilentlyContinue)) {
     exit
 }
 
+
+
 # Create a new form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = Get-LocalizedText -key 'Title'
 $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
 $form.FormBorderStyle = 'FixedDialog'
 
-# Define the applications with IDs, names, and categories
-$applications = @(
-    @{ Category = Get-LocalizedText -key 'Compression'; ID = '7zip.7zip'; Name = '7-Zip' },
-    @{ Category = Get-LocalizedText -key 'Compression'; ID = 'Giorgiotani.Peazip'; Name = 'PeaZip' },
-    @{ Category = Get-LocalizedText -key 'Compression'; ID = 'RARLab.WinRAR'; Name = 'WinRAR' },
-    @{ Category = Get-LocalizedText -key 'Development'; ID = 'Notepad++.Notepad++'; Name = 'Notepad++' },
-    @{ Category = Get-LocalizedText -key 'Development'; ID = 'Microsoft.VisualStudioCode'; Name = 'Visual Studio Code' },
-    @{ Category = Get-LocalizedText -key 'Development'; ID = 'Python.Python.3.12'; Name = 'Python 3.12' },
-    @{ Category = Get-LocalizedText -key 'Development'; ID = 'PuTTY.PuTTY'; Name = 'PuTTY' },
-    @{ Category = Get-LocalizedText -key 'Development'; ID = 'WinSCP.WinSCP'; Name = 'WinSCP' },
-    @{ Category = Get-LocalizedText -key 'Development'; ID = 'WinMerge.WinMerge'; Name = 'WinMerge' },
-    @{ Category = Get-LocalizedText -key 'Dependencies'; ID = 'abbodi1406.vcredist'; Name = 'MS Visual C++ AIO' },
-    @{ Category = Get-LocalizedText -key 'Dependencies'; ID = 'Microsoft.DirectX'; Name = 'DirectX' },
-    @{ Category = Get-LocalizedText -key 'Development'; ID = 'Termius.Termius'; Name = 'Termius' },
-    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Microsoft.Office'; Name = 'Office 365' },
-    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Adobe.Acrobat.Reader.64-bit'; Name = 'Adobe Acrobat Reader' },
-    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Foxit.FoxitReader'; Name = 'Foxit PDF Reader' },
-    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'TheDocumentFoundation.LibreOffice'; Name = 'LibreOffice' },
-    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Kingsoft.WPSOffice.CN'; Name = 'WPS Office' },
-    @{ Category = Get-LocalizedText -key 'Documents'; ID = 'Apache.OpenOffice'; Name = 'OpenOffice' },
-    @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'IrfanSkiljan.IrfanView'; Name = 'IrfanView' },
-    @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'dotPDNLLC.paintdotnet'; Name = 'Paint.NET' },
-    @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'GIMP.GIMP'; Name = 'GIMP' },
-    @{ Category = Get-LocalizedText -key 'Imaging'; ID = 'BlenderFoundation.Blender'; Name = 'Blender' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Discord.Discord'; Name = 'Discord' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Microsoft.Skype'; Name = 'Skype' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Mozilla.Thunderbird'; Name = 'Thunderbird' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Zoom.Zoom'; Name = 'Zoom' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = '9NKSQGP7F2NH'; Name = 'WhatsApp' },
-    @{ Category = Get-LocalizedText -key 'Messaging'; ID = 'Telegram.TelegramDesktop'; Name = 'Telegram' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Ablaze.Floorp'; Name = 'Floorp' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Brave.Brave'; Name = 'Brave' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Google.Chrome'; Name = 'Google Chrome' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Mozilla.Firefox'; Name = 'Firefox' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Vivaldi.Vivaldi'; Name = 'Vivaldi' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Opera.Opera'; Name = 'Opera' },
-    @{ Category = Get-LocalizedText -key 'Web Browsers'; ID = 'Opera.OperaGX'; Name = 'Opera GX' },
-    @{ Category = Get-LocalizedText -key 'File Sharing'; ID = 'qBittorrent.qBittorrent'; Name = 'qBittorrent' },
-    @{ Category = Get-LocalizedText -key 'File Sharing'; ID = 'Tonec.InternetDownloadManager'; Name = 'Internet Download Manager' },
-    @{ Category = Get-LocalizedText -key 'Media'; ID = 'VideoLAN.VLC'; Name = 'VLC Media Player' },
-    @{ Category = Get-LocalizedText -key 'Media'; ID = 'CodecGuide.K-LiteCodecPack.Full'; Name = 'K-Lite Codec Pack' },
-    @{ Category = Get-LocalizedText -key 'Media'; ID = 'GOMLab.GOMPlayer'; Name = 'GOM Player' },
-    @{ Category = Get-LocalizedText -key 'Media'; ID = 'Spotify.Spotify'; Name = 'Spotify' },
-    @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'Valve.Steam'; Name = 'Steam' },
-    @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'EpicGames.EpicGamesLauncher'; Name = 'Epic Games Launcher' },
-    @{ Category = Get-LocalizedText -key 'Gaming'; ID = 'Ubisoft.Connect'; Name = 'Ubisoft Connect' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'TeamViewer.TeamViewer'; Name = 'TeamViewer' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'CodeSector.TeraCopy'; Name = 'TeraCopy' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'WinDirStat.WinDirStat'; Name = 'WinDirStat' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Open-Shell.Open-Shell-Menu'; Name = 'Open Shell' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Piriform.CCleaner'; Name = 'CCleaner' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'AntibodySoftware.WizTree'; Name = 'WizTree' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Guru3D.Afterburner'; Name = 'MSI Afterburner' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'FxSoundLLC.FxSound'; Name = 'FxSound' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'HiBitSoftware.StartUpManager'; Name = 'HiBit StartUp Manager' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'HiBitSoftware.HiBitUninstaller'; Name = 'HiBit Uninstaller' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'RevoUninstaller.RevoUninstaller'; Name = 'Revo Uninstaller' },
-    @{ Category = Get-LocalizedText -key 'Utilities'; ID = 'Nilesoft.Shell'; Name = 'Nilesoft Shell' }
-)
+$url = "https://preview.redd.it/w0qg2oanfel51.png?width=1080&crop=smart&auto=webp&s=46e6727910dc87c062f10ea077f2485d70eb428f"
+$backgroundImage = $(Get-Image -url $url)
 
-# Group applications by category
-$groupedApplications = @{}
-foreach ($obj in $applications) {
-    # Check if the hashtable does not contain the category key and add it if necessary
-    if (-not $groupedApplications.ContainsKey($obj.Category)) {
-        $groupedApplications[$obj.Category] = @()
+$form.BackgroundImage = [System.Drawing.Image]::FromFile($backgroundImage)
+$form.BackgroundImageLayout = "Stretch"
+
+$apps = @"
+[   
+    {
+        "Name": "Compression",
+        "Value": [
+            { "ID": "7zip.7zip", "Name": "7-Zip" },
+            { "ID": "Giorgiotani.Peazip", "Name": "PeaZip" },
+            { "ID": "RARLab.WinRAR", "Name": "WinRAR" }
+        ],
+        "Icon": "https://w7.pngwing.com/pngs/692/333/png-transparent-data-compression-computer-icons-data-compression-logo-artwork-symbol.png"
+    },
+    {
+        "Name": "Development",
+        "Value": [
+            { "ID": "Notepad++.Notepad++", "Name": "Notepad++" },
+            { "ID": "Microsoft.VisualStudioCode", "Name": "Visual Studio Code" },
+            { "ID": "Python.Python.3.12", "Name": "Python 3.12" },
+            { "ID": "PuTTY.PuTTY", "Name": "PuTTY" },
+            { "ID": "WinSCP.WinSCP", "Name": "WinSCP" },
+            { "ID": "WinMerge.WinMerge", "Name": "WinMerge" },
+            { "ID": "Git.Git", "Name": "Git" }
+        ]
+    },
+    {
+        "Name": "Dependencies",
+        "Value": [
+            { "ID": "abbodi1406.vcredist", "Name": "MS Visual C++ AIO" },
+            { "ID": "Microsoft.DirectX", "Name": "DirectX" }
+        ]
+    },
+    {
+        "Name": "Documents",
+        "Value": [
+            { "ID": "Microsoft.Office", "Name": "Office 365" },
+            { "ID": "Adobe.Acrobat.Reader.64-bit", "Name": "Adobe Acrobat Reader" },
+            { "ID": "Foxit.FoxitReader", "Name": "Foxit PDF Reader" },
+            { "ID": "TheDocumentFoundation.LibreOffice", "Name": "LibreOffice" },
+            { "ID": "Kingsoft.WPSOffice.CN", "Name": "WPS Office" },
+            { "ID": "Apache.OpenOffice", "Name": "OpenOffice" }
+        ]
+    },
+    {
+        "Name": "Imaging",
+        "Value": [
+            { "ID": "IrfanSkiljan.IrfanView", "Name": "IrfanView" },
+            { "ID": "dotPDNLLC.paintdotnet", "Name": "Paint.NET" },
+            { "ID": "GIMP.GIMP", "Name": "GIMP" },
+            { "ID": "BlenderFoundation.Blender", "Name": "Blender" }
+        ]
+    },
+    {
+        "Name": "Messaging",
+        "Value": [
+            { "ID": "Discord.Discord", "Name": "Discord" },
+            { "ID": "Microsoft.Skype", "Name": "Skype" },
+            { "ID": "Mozilla.Thunderbird", "Name": "Thunderbird" },
+            { "ID": "Zoom.Zoom", "Name": "Zoom" },
+            { "ID": "9NKSQGP7F2NH", "Name": "WhatsApp" },
+            { "ID": "Telegram.TelegramDesktop", "Name": "Telegram" }
+        ]
+    },
+    {
+        "Name": "Web Browsers",
+        "Value": [
+            { "ID": "Ablaze.Floorp", "Name": "Floorp" },
+            { "ID": "Brave.Brave", "Name": "Brave" },
+            { "ID": "Google.Chrome", "Name": "Google Chrome" },
+            { "ID": "Mozilla.Firefox", "Name": "Firefox" },
+            { "ID": "Vivaldi.Vivaldi", "Name": "Vivaldi" },
+            { "ID": "Opera.Opera", "Name": "Opera" },
+            { "ID": "Opera.OperaGX", "Name": "Opera GX" }
+        ]
+    },
+    {
+        "Name": "File Sharing",
+        "Value": [
+            { "ID": "qBittorrent.qBittorrent", "Name": "qBittorrent" },
+            { "ID": "Tonec.InternetDownloadManager", "Name": "Internet Download Manager" },
+            { "ID": "Transmission.Transmission", "Name": "Transmission" },
+            { "ID": "CometNetwork.BitComet", "Name": "BitComet" },
+            { "ID": "DelugeTeam.Deluge", "Name": "Deluge" },
+            { "ID": "AppWork.JDownloader", "Name": "JDownloader 2" }
+        ]
+    },
+    {
+        "Name": "Media",
+        "Value": [
+            { "ID": "VideoLAN.VLC", "Name": "VLC Media Player" },
+            { "ID": "CodecGuide.K-LiteCodecPack.Full", "Name": "K-Lite Codec Pack" },
+            { "ID": "GOMLab.GOMPlayer", "Name": "GOM Player" },
+            { "ID": "Spotify.Spotify", "Name": "Spotify" }
+        ]
+    },
+    {
+        "Name": "Gaming",
+        "Value": [
+            { "ID": "Valve.Steam", "Name": "Steam" },
+            { "ID": "EpicGames.EpicGamesLauncher", "Name": "Epic Games Launcher" },
+            { "ID": "Ubisoft.Connect", "Name": "Ubisoft Connect" }
+        ]
+    },
+    {
+        "Name": "Utilities",
+        "Value": [
+            { "ID": "TeamViewer.TeamViewer", "Name": "TeamViewer" },
+            { "ID": "CodeSector.TeraCopy", "Name": "TeraCopy" },
+            { "ID": "WinDirStat.WinDirStat", "Name": "WinDirStat" },
+            { "ID": "Open-Shell.Open-Shell-Menu", "Name": "Open Shell" },
+            { "ID": "Piriform.CCleaner", "Name": "CCleaner" },
+            { "ID": "AntibodySoftware.WizTree", "Name": "WizTree" },
+            { "ID": "Guru3D.Afterburner", "Name": "MSI Afterburner" },
+            { "ID": "FxSoundLLC.FxSound", "Name": "FxSound" },
+            { "ID": "HiBitSoftware.StartUpManager", "Name": "HiBit StartUp Manager" },
+            { "ID": "HiBitSoftware.HiBitUninstaller", "Name": "HiBit Uninstaller" },
+            { "ID": "RevoUninstaller.RevoUninstaller", "Name": "Revo Uninstaller" },
+            { "ID": "Nilesoft.Shell", "Name": "Nilesoft Shell"}
+        ]
     }
-    
-    # Add the object to the appropriate category in the hashtable
-    $groupedApplications[$obj.Category] += $obj
-}
+]
+"@
+
+$groupedApplications = $apps | ConvertFrom-Json
 
 $categoryPerColumn = 3
 
@@ -182,23 +251,38 @@ $yPos += 30
 $idx = 1
 $checkboxes = @()
 
-foreach ($group in $groupedApplications.Keys) {
+foreach ($group in $groupedApplications) {
+    # Add category icon
+    $image = Get-Image -url "https://raw.githubusercontent.com/emircankavas/kavasinstaller/main/icons/categories/$($group.Name).png"
+    $icon = [System.Drawing.Image]::FromFile($image)
+    $pictureBox = new-object Windows.Forms.PictureBox
+    $pictureBox.Location = New-Object System.Drawing.Size(($xPos + 5), $yPos)
+    $pictureBox.Size = New-Object System.Drawing.Size(20,20)
+    $pictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+    $pictureBox.Image = $icon
+    $pictureBox.BackColor = [System.Drawing.Color]::Transparent
+    $Form.controls.add($pictureBox)
+
     # Create a label for the category
     $label = New-Object System.Windows.Forms.Label
-    $label.Text = $group
-    $label.Location = New-Object System.Drawing.Point($xPos, $yPos)
+    $label.Text = Get-LocalizedText -key $group.Name
+    $label.Location = New-Object System.Drawing.Point(($xPos + 25), $yPos)
     $label.AutoSize = $true
+    $label.BackColor = [System.Drawing.Color]::Transparent
+    $label.ForeColor = [System.Drawing.Color]::White
     $form.Controls.Add($label)
-    $yPos += 30
+    $yPos += 25
 
     # Create a checkbox for each application in the category
-    foreach ($app in $groupedApplications[$group]) {
+    foreach ($app in $group.Value) {
         $checkbox = New-Object System.Windows.Forms.CheckBox
         $checkbox.Text = $app.Name
         $checkbox.Tag = $app.ID # Use the Tag property to store the application ID
         $checkboxLoc = $xPos + 10
         $checkbox.Location = New-Object System.Drawing.Point($checkboxLoc, $yPos) # Indent checkboxes for visual grouping
         $checkbox.AutoSize = $true
+        $checkbox.BackColor = [System.Drawing.Color]::Transparent
+        $checkbox.ForeColor = [System.Drawing.Color]::White
         $form.Controls.Add($checkbox)
         $yPos += 20
         $checkboxes += $checkbox
@@ -238,6 +322,9 @@ $installingLabelLocation = $yPos + 25
 $installingLabel.Location = New-Object System.Drawing.Point(10, $installingLabelLocation) # Position above the progress bar
 $installingLabel.Size = New-Object System.Drawing.Size($progressBarSize, 20) # Same width as the progress bar for alignment
 $installingLabel.Text = Get-LocalizedText -key 'Waiting'
+
+$installingLabel.BackColor = [System.Drawing.Color]::Transparent
+$installingLabel.ForeColor = [System.Drawing.Color]::White
 $form.Controls.Add($installingLabel)
 
 # Update yPos for the progress bar based on the new label, adding space
@@ -295,4 +382,4 @@ $form.Controls.Add($buttonInstall)
 $form.Width = $formWidth + 200
 $form.Height = $yPos + 100
 
-$form.ShowDialog()
+$form.ShowDialog() | Out-Null
