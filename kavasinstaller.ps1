@@ -94,7 +94,7 @@ $url = "https://preview.redd.it/w0qg2oanfel51.png?width=1080&crop=smart&auto=web
 $backgroundImage = $(Get-Image -url $url)
 
 $form.BackgroundImage = [System.Drawing.Image]::FromFile($backgroundImage)
-$form.BackgroundImageLayout = "Stretch"
+$form.BackgroundImageLayout = 'Stretch'
 
 # Create the close button
 $closeButton = New-Object System.Windows.Forms.Button
@@ -160,8 +160,7 @@ $apps = @"
             { "ID": "7zip.7zip", "Name": "7-Zip" },
             { "ID": "Giorgiotani.Peazip", "Name": "PeaZip" },
             { "ID": "RARLab.WinRAR", "Name": "WinRAR" }
-        ],
-        "Icon": "https://w7.pngwing.com/pngs/692/333/png-transparent-data-compression-computer-icons-data-compression-logo-artwork-symbol.png"
+        ]
     },
     {
         "Name": "Development",
