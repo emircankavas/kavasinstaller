@@ -1,7 +1,7 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-$appVersion = "0.1"
+$appVersion = "0.6"
 
 $translations = @{
     "en-US" = @{
@@ -87,13 +87,70 @@ if (-not(Get-Command winget -ErrorAction SilentlyContinue)) {
 $form = New-Object System.Windows.Forms.Form
 $form.Text = Get-LocalizedText -key 'Title'
 $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
-$form.FormBorderStyle = 'FixedDialog'
+$form.FormBorderStyle = 'None'
+
 
 $url = "https://preview.redd.it/w0qg2oanfel51.png?width=1080&crop=smart&auto=webp&s=46e6727910dc87c062f10ea077f2485d70eb428f"
 $backgroundImage = $(Get-Image -url $url)
 
 $form.BackgroundImage = [System.Drawing.Image]::FromFile($backgroundImage)
 $form.BackgroundImageLayout = "Stretch"
+
+# Create the close button
+$closeButton = New-Object System.Windows.Forms.Button
+$closeButton.Text = "x"
+$closeButton.ForeColor = 'Gray'
+$closeButton.BackColor = 'Red'
+$closeButton.Width = 15
+$closeButton.Height = 15
+$closeButton.Location = New-Object System.Drawing.Point(10, 10)
+$closeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$closeButton.FlatAppearance.BorderSize = 0
+$closeButton.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 8.25, [System.Drawing.FontStyle]::Bold)
+$closeButton.Region = New-Object System.Drawing.Region([System.Drawing.Drawing2D.GraphicsPath]::new())
+$closeButton.Region.MakeInfinite()
+$closeButton.Region.Exclude([System.Drawing.Rectangle]::new(0, 0, 20, 20))
+$closeButton.Region.Exclude([System.Drawing.Rectangle]::new(1, 1, 18, 18))
+$path = New-Object System.Drawing.Drawing2D.GraphicsPath
+$path.AddEllipse(0, 0, $closeButton.Width, $closeButton.Height)
+$closeButton.Region = New-Object System.Drawing.Region($path)
+$closeButton.Add_Click({
+    $form.Close()
+})
+$form.Controls.Add($closeButton)
+
+# Create the minimize button
+$minimizeButton = New-Object System.Windows.Forms.Button
+$minimizeButton.Text = "-"
+$minimizeButton.ForeColor = 'Gray'
+$minimizeButton.BackColor = 'Orange'
+$minimizeButton.Width = 15
+$minimizeButton.Height = 15
+$minimizeButton.Location = New-Object System.Drawing.Point(30, 10)
+$minimizeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$minimizeButton.FlatAppearance.BorderSize = 0
+$minimizeButton.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 8.25, [System.Drawing.FontStyle]::Bold)
+$minimizeButton.Region = New-Object System.Drawing.Region([System.Drawing.Drawing2D.GraphicsPath]::new())
+$minimizeButton.Region.MakeInfinite()
+$minimizeButton.Region.Exclude([System.Drawing.Rectangle]::new(0, 0, 20, 20))
+$minimizeButton.Region.Exclude([System.Drawing.Rectangle]::new(1, 1, 18, 18))
+$path = New-Object System.Drawing.Drawing2D.GraphicsPath
+$path.AddEllipse(0, 0, $minimizeButton.Width, $minimizeButton.Height)
+$minimizeButton.Region = New-Object System.Drawing.Region($path)
+$minimizeButton.Add_Click({
+    $form.WindowState = [System.Windows.Forms.FormWindowState]::Minimized
+})
+$form.Controls.Add($minimizeButton)
+
+# Create a label for the title
+$titleLabel = New-Object System.Windows.Forms.Label
+$titleLabel.Text = Get-LocalizedText -key 'Title'
+$titleLabel.Location = New-Object System.Drawing.Point(60, 10)
+$titleLabel.AutoSize = $true
+$titleLabel.BackColor = [System.Drawing.Color]::Transparent
+$titleLabel.ForeColor = [System.Drawing.Color]::White
+$titleLabel.Font = New-Object System.Drawing.Font($titleLabel.Font, [System.Drawing.FontStyle]::Bold)
+$form.Controls.Add($titleLabel)
 
 $apps = @"
 [   
@@ -231,23 +288,38 @@ $columnHeight = 0
 
 # Create search box
 $searchBox = New-Object System.Windows.Forms.TextBox
-$searchBox.Location = New-Object System.Drawing.Point(($formWidth / 2), $yPos)
-$searchBox.Size = New-Object System.Drawing.Size((($formWidth + 165) / 4), 20)
-$searchBox.Text = Get-LocalizedText -key "Search"
+$searchBox.Location = New-Object System.Drawing.Point(($formWidth + 10), $yPos)
+$searchBox.Size = New-Object System.Drawing.Size(180, 20)
+#searchbox text
+$searchBox.PlaceholderText = Get-LocalizedText -key "Search"
+
 $searchBox.Add_TextChanged({
     $searchText = $searchBox.Text.ToLower()
-    # Check if the checkbox text contains the search text, if so, make the font bold
-    foreach ($checkbox in $checkboxes) {
-        if ($checkbox.Text.ToLower().Contains($searchText)) {
-            $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Bold)
-        } else {
+    # if search text is empty, reset the font to regular
+    if ($searchText -eq "") {
+        foreach ($checkbox in $checkboxes) {
+            # if font is already regular, skip
+            if ($checkbox.Font.Bold -eq $false) {
+                continue
+            }
             $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Regular)
         }
+    } else {
+        # Check if the checkbox text contains the search text, if so, make the font bold
+        foreach ($checkbox in $checkboxes) {
+            if ($checkbox.Text.ToLower().Contains($searchText)) {
+                $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Bold)
+            } else {
+                $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Regular)
+            }
+        }
     }
+
+    
 })
 $form.Controls.Add($searchBox)
 
-$yPos += 30
+$yPos += 60
 
 # Create UI elements grouped by category and adjust for columns
 
@@ -273,6 +345,7 @@ foreach ($group in $groupedApplications) {
     $label.AutoSize = $true
     $label.BackColor = [System.Drawing.Color]::Transparent
     $label.ForeColor = [System.Drawing.Color]::White
+    $label.Font = New-Object System.Drawing.Font($label.Font, [System.Drawing.FontStyle]::Bold)
     $form.Controls.Add($label)
     $yPos += 25
 
@@ -297,7 +370,7 @@ foreach ($group in $groupedApplications) {
     # Reset yPos for each new column, and adjust xPos based on columnIndex
     if (($idx % $categoryPerColumn) -eq 0) {
         $xPos += $columnWidth
-        $yPos = 40
+        $yPos = 70
     }
 
     $idx++
@@ -387,6 +460,6 @@ $buttonInstall.Add_Click({
 $form.Controls.Add($buttonInstall)
 
 $form.Width = $formWidth + 200
-$form.Height = $yPos + 100
+$form.Height = $yPos + 70
 
 $form.ShowDialog() | Out-Null
