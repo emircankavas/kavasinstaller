@@ -1,6 +1,8 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+$ProgressPreference = 'SilentlyContinue'
+
 $translations = @{
     "en-US" = @{
         "Compression" = "Compression";
