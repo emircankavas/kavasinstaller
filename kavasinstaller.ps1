@@ -290,8 +290,8 @@ $columnHeight = 0
 $searchBox = New-Object System.Windows.Forms.TextBox
 $searchBox.Location = New-Object System.Drawing.Point(($formWidth + 10), $yPos)
 $searchBox.Size = New-Object System.Drawing.Size(180, 20)
-#searchbox text
-$searchBox.PlaceholderText = Get-LocalizedText -key "Search"
+#searchbox placeholder text
+$searchBox.Text = Get-LocalizedText -key 'Search'
 
 $searchBox.Add_TextChanged({
     $searchText = $searchBox.Text.ToLower()
