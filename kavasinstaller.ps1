@@ -15,6 +15,8 @@ $translations = @{
         "Media" = "Media";
         "Gaming" = "Gaming";
         "Utilities" = "Utilities";
+        "Virtualization" = "Virtualization";
+        "Security" = "Security";
         "Dependencices" = "Dependencies";
         "Title" = "Kavas Installer $appVersion";
         "Install" = "Install";
@@ -36,6 +38,8 @@ $translations = @{
         "Media" = "Medya";
         "Gaming" = "Oyunlar";
         "Utilities" = "Araçlar";
+        "Virtualization" = "Sanallaştırma";
+        "Security" = "Güvenlik";
         "Dependencies" = "Bağımlılıklar";
         "Title" = "Kavas Yükleyici $appVersion";
         "Install" = "Yükle";
@@ -245,6 +249,15 @@ $apps = @"
         ]
     },
     {
+        "Name": "Virtualization",
+        "Value": [
+            { "ID": "Oracle.VirtualBox", "Name": "VirtualBox" },
+            { "ID": "VMware.WorkstationPro", "Name": "VMware Workstation" },
+            { "ID": "Docker.DockerDesktop", "Name": "Docker Desktop" },
+            { "ID": "BlueStack.BlueStacks", "Name": "BlueStacks" }
+        ]
+    },
+    {
         "Name": "Gaming",
         "Value": [
             { "ID": "Valve.Steam", "Name": "Steam" },
@@ -268,6 +281,15 @@ $apps = @"
             { "ID": "RevoUninstaller.RevoUninstaller", "Name": "Revo Uninstaller" },
             { "ID": "Nilesoft.Shell", "Name": "Nilesoft Shell"}
         ]
+    },
+    {
+        "Name": "Security",
+        "Value": [
+            { "ID": "9P6PMZTM93LR", "Name": "Microsoft Defender" },
+            { "ID": "XPDNZJFNCR1B07", "Name": "Avast Free Antivirus" },
+            { "ID": "XP8BX2DWV7TF50", "Name": "AVG AntiVirus Free" },
+            { "ID": "Malwarebytes.Malwarebytes", "Name": "Malwarebytes" }
+        ]
     }
 ]
 "@
@@ -278,7 +300,7 @@ $categoryPerColumn = 3
 
 $columnsNeeded = [math]::Floor($groupedApplications.Count / $categoryPerColumn)
 $columnWidth = 200 # Define column width
-$formWidth = $columnWidth * $columnsNeeded # Calculate form width based on columns needed
+$formWidth = ($columnWidth * $columnsNeeded) # Calculate form width based on columns needed
 
 # Layout variables
 $xPos = 10
@@ -287,7 +309,7 @@ $columnHeight = 0
 
 # Create search box
 $searchBox = New-Object System.Windows.Forms.TextBox
-$searchBox.Location = New-Object System.Drawing.Point(($formWidth + 10), $yPos)
+$searchBox.Location = New-Object System.Drawing.Point(($formWidth), $yPos)
 $searchBox.Size = New-Object System.Drawing.Size(180, 20)
 #searchbox placeholder text
 $searchBox.Text = Get-LocalizedText -key 'Search'
