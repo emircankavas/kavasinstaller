@@ -1,7 +1,19 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-$appVersion = "0.6"
+# Load shell32.dll and extract the icon
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class Shell32
+{
+    [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+    public static extern IntPtr ExtractIcon(IntPtr hinst, string lpszExeFileName, int nIconIndex);
+}
+"@
+
+
+$appVersion = "0.9"
 
 $translations = @{
     "en-US" = @{
@@ -25,7 +37,11 @@ $translations = @{
         "Waiting" = "Waiting for installation to start...";
         "Installing" = "Installing";
         "Search" = "Start typing to search";
-        "wingetNotInstalled" = "winget is not installed. Please install it manually through the Microsoft Store by searching for 'App Installer' or check the documentation for your Windows version for alternative installation methods."
+        "wingetNotInstalled" = "winget is not installed. Please install it manually through the Microsoft Store by searching for 'App Installer' or check the documentation for your Windows version for alternative installation methods.";
+        "Save" = "Save selected apps to JSON file";
+        "Load" = "Load selected apps from JSON file";
+        "Import" = "▼ Import";
+        "Export" = "▲ Export";
     }
     "tr-TR" = @{
         "Compression" = "Sıkıştırma";
@@ -48,7 +64,11 @@ $translations = @{
         "Waiting" = "Yüklemenin başlaması bekleniyor...";
         "Installing" = "Yükleniyor";
         "Search" = "Aramak için yazmaya başlayın";
-        "wingetNotInstalled" = "winget yüklü değil. Lütfen 'App Installer' uygulamasını Microsoft Store'dan arayarak manuel olarak yükleyin veya alternatif yükleme yöntemleri için Windows sürümünüzün belgelerine bakın."
+        "wingetNotInstalled" = "winget yüklü değil. Lütfen 'App Installer' uygulamasını Microsoft Store'dan arayarak manuel olarak yükleyin veya alternatif yükleme yöntemleri için Windows sürümünüzün belgelerine bakın.";
+        "Save" = "Seçilen uygulamaları JSON'a kaydet";
+        "Load" = "Seçilen uygulamaları JSON'dan yükle";
+        "Import" = "▼ İçe Aktar";
+        "Export" = "▲ Dışa Aktar";
     }
 }
 
@@ -77,6 +97,22 @@ function Get-Image {
 
     return $tempFilePath
 }
+
+function Save-File($selectedApps) {
+    # Create a new SaveFileDialog object
+    $saveFileDialog = New-Object System.Windows.Forms.SaveFileDialog
+
+    # Set the properties of the SaveFileDialog
+    $saveFileDialog.Title = "Save File"
+    $saveFileDialog.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+    $saveFileDialog.DefaultExt = "txt"
+    $saveFileDialog.AddExtension = $true
+
+    if ($saveFileDialog.ShowDialog() -eq 'OK') {
+        # Save the selected applications to the file
+        Write-Output $selectedApps | ConvertTo-Json | Out-File -FilePath $saveFileDialog.FileName
+    }
+} 
 
 
 # Check if winget is available
@@ -309,7 +345,8 @@ $columnHeight = 0
 
 # Create search box
 $searchBox = New-Object System.Windows.Forms.TextBox
-$searchBox.Location = New-Object System.Drawing.Point(($formWidth), $yPos)
+$searchBoxXPos = $formWidth
+$searchBox.Location = New-Object System.Drawing.Point($searchBoxXPos, $yPos)
 $searchBox.Size = New-Object System.Drawing.Size(180, 20)
 #searchbox placeholder text
 $searchBox.Text = Get-LocalizedText -key 'Search'
@@ -447,7 +484,6 @@ $buttonInstall.ForeColor = [System.Drawing.Color]::White
 $buttonInstall.Font = New-Object System.Drawing.Font($buttonInstall.Font, [System.Drawing.FontStyle]::Bold)
 $form.Controls.Add($buttonInstall)
 
-
 # Add an event handler for the install button click
 $buttonInstall.Add_Click({
     $buttonInstall.Enabled = $false
@@ -468,7 +504,7 @@ $buttonInstall.Add_Click({
         foreach ($app in $selectedApps) {
             # Update label with the current installing application's name
             $installingLabel.Text = "[$($ProgressBar.Value + 1)/$($selectedApps.Count)] $(Get-LocalizedText -key 'Installing'): $($app.Name)"
-            winget.exe install $app.ID -e --accept-package-agreements
+            winget.exe install $app.ID --accept-package-agreements
             $progressBar.PerformStep()
         }
         [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "Complete"))
@@ -480,6 +516,93 @@ $buttonInstall.Add_Click({
 })
 
 $form.Controls.Add($buttonInstall)
+
+
+# Add button which named "Load selected apps". It will load selected apps from a file.
+$buttonLoad = New-Object System.Windows.Forms.Button
+# Set button text
+$buttonLoad.Text = Get-LocalizedText -key 'Import'
+
+# transparent background and no border
+$buttonLoad.BackColor = [System.Drawing.Color]::Transparent
+$buttonLoad.ForeColor = [System.Drawing.Color]::White
+$buttonLoad.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$buttonLoad.FlatAppearance.BorderSize = 0
+
+
+# Locate button to right of the search box
+$buttonLoadXPos = $searchBoxXPos + 30
+$buttonLoad.Location = New-Object System.Drawing.Point($buttonLoadXPos, ($yPos + 30))
+
+$buttonLoad.Size = New-Object System.Drawing.Size(75, 24)
+# Create the ToolTip
+$toolTip = New-Object System.Windows.Forms.ToolTip
+
+# Set up the delay for the tooltip (optional)
+$toolTip.InitialDelay = 500
+$toolTip.ReshowDelay = 100
+
+# Set the tooltip text for the button
+$toolTip.SetToolTip($buttonLoad, $(Get-LocalizedText -key 'Load'))
+
+$buttonLoad.Add_Click({
+    $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
+    $openFileDialog.Title = "Open File"
+    $openFileDialog.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+    $openFileDialog.DefaultExt = "txt"
+    $openFileDialog.AddExtension = $true
+
+    if ($openFileDialog.ShowDialog() -eq 'OK') {
+        $selectedApps = Get-Content -Path $openFileDialog.FileName | ConvertFrom-Json
+        foreach ($app in $selectedApps) {
+            $form.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] -and $_.Tag -eq $app.ID } | ForEach-Object {
+                $_.Checked = $true
+            }
+        }
+    }
+})
+$form.Controls.Add($buttonLoad)
+
+# Add button which named "Save selected apps". It will save selected apps to a file.
+$buttonSave = New-Object System.Windows.Forms.Button
+# Set button text
+$buttonSave.Text = Get-LocalizedText -key 'Export'
+
+# Locate button to the right of load button
+$buttonSaveLocation = $buttonLoadXPos + 70
+$buttonSave.Location = New-Object System.Drawing.Point($buttonSaveLocation, ($yPos + 30))
+$buttonSave.Size = New-Object System.Drawing.Size(90, 24)
+
+# transparent background and no border
+$buttonSave.BackColor = [System.Drawing.Color]::Transparent
+$buttonSave.ForeColor = [System.Drawing.Color]::White
+$buttonSave.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$buttonSave.FlatAppearance.BorderSize = 0
+
+# Create the ToolTip
+$toolTip = New-Object System.Windows.Forms.ToolTip
+
+# Set up the delay for the tooltip (optional)
+$toolTip.InitialDelay = 500
+$toolTip.ReshowDelay = 100
+
+# Set the tooltip text for the button
+$toolTip.SetToolTip($buttonSave, $(Get-LocalizedText -key 'Save'))
+
+
+$buttonSave.Add_Click({
+    $selectedApps = @()
+    $form.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] -and $_.Checked } | ForEach-Object {
+        $selectedApp = @{ID = $_.Tag; Name = $_.Text}
+        $selectedApps += $selectedApp
+    }
+    Write-Output $selectedApps
+    Save-File -selectedApps $selectedApps
+})
+$form.Controls.Add($buttonSave)
+
+# Add button which named "Recommended". It will select recommended apps.
+
 
 $form.Width = $formWidth + 200
 $form.Height = $yPos + 70
