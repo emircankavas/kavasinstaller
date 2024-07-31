@@ -13,7 +13,7 @@ public class Shell32
 "@
 
 
-$appVersion = "0.9"
+$appVersion = "1.0"
 
 $translations = @{
     "en-US" = @{
