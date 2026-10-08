@@ -1,0 +1,339 @@
+[
+    {
+        "Name":  "Compression",
+        "Value":  [
+                      {
+                          "ID":  "7zip.7zip",
+                          "Name":  "7-Zip"
+                      },
+                      {
+                          "ID":  "Giorgiotani.Peazip",
+                          "Name":  "PeaZip"
+                      },
+                      {
+                          "ID":  "RARLab.WinRAR",
+                          "Name":  "WinRAR"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Development",
+        "Value":  [
+                      {
+                          "ID":  "Notepad++.Notepad++",
+                          "Name":  "Notepad++"
+                      },
+                      {
+                          "ID":  "Microsoft.VisualStudioCode",
+                          "Name":  "Visual Studio Code"
+                      },
+                      {
+                          "ID":  "Python.Python.3.12",
+                          "Name":  "Python 3.12"
+                      },
+                      {
+                          "ID":  "PuTTY.PuTTY",
+                          "Name":  "PuTTY"
+                      },
+                      {
+                          "ID":  "WinSCP.WinSCP",
+                          "Name":  "WinSCP"
+                      },
+                      {
+                          "ID":  "WinMerge.WinMerge",
+                          "Name":  "WinMerge"
+                      },
+                      {
+                          "ID":  "Git.Git",
+                          "Name":  "Git"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Dependencies",
+        "Value":  [
+                      {
+                          "ID":  "abbodi1406.vcredist",
+                          "Name":  "MS Visual C++ AIO"
+                      },
+                      {
+                          "ID":  "Microsoft.DirectX",
+                          "Name":  "DirectX"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Documents",
+        "Value":  [
+                      {
+                          "ID":  "Microsoft.Office",
+                          "Name":  "Office 365"
+                      },
+                      {
+                          "ID":  "Adobe.Acrobat.Reader.64-bit",
+                          "Name":  "Adobe Acrobat Reader"
+                      },
+                      {
+                          "ID":  "Foxit.FoxitReader",
+                          "Name":  "Foxit PDF Reader"
+                      },
+                      {
+                          "ID":  "TheDocumentFoundation.LibreOffice",
+                          "Name":  "LibreOffice"
+                      },
+                      {
+                          "ID":  "Kingsoft.WPSOffice.CN",
+                          "Name":  "WPS Office"
+                      },
+                      {
+                          "ID":  "Apache.OpenOffice",
+                          "Name":  "OpenOffice"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Imaging",
+        "Value":  [
+                      {
+                          "ID":  "IrfanSkiljan.IrfanView",
+                          "Name":  "IrfanView"
+                      },
+                      {
+                          "ID":  "dotPDNLLC.paintdotnet",
+                          "Name":  "Paint.NET"
+                      },
+                      {
+                          "ID":  "GIMP.GIMP",
+                          "Name":  "GIMP"
+                      },
+                      {
+                          "ID":  "BlenderFoundation.Blender",
+                          "Name":  "Blender"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Messaging",
+        "Value":  [
+                      {
+                          "ID":  "Discord.Discord",
+                          "Name":  "Discord"
+                      },
+                      {
+                          "ID":  "Microsoft.Skype",
+                          "Name":  "Skype"
+                      },
+                      {
+                          "ID":  "Mozilla.Thunderbird",
+                          "Name":  "Thunderbird"
+                      },
+                      {
+                          "ID":  "Zoom.Zoom",
+                          "Name":  "Zoom"
+                      },
+                      {
+                          "ID":  "9NKSQGP7F2NH",
+                          "Name":  "WhatsApp"
+                      },
+                      {
+                          "ID":  "Telegram.TelegramDesktop",
+                          "Name":  "Telegram"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Web Browsers",
+        "Value":  [
+                      {
+                          "ID":  "Ablaze.Floorp",
+                          "Name":  "Floorp"
+                      },
+                      {
+                          "ID":  "Brave.Brave",
+                          "Name":  "Brave"
+                      },
+                      {
+                          "ID":  "Google.Chrome",
+                          "Name":  "Google Chrome"
+                      },
+                      {
+                          "ID":  "Mozilla.Firefox",
+                          "Name":  "Firefox"
+                      },
+                      {
+                          "ID":  "Vivaldi.Vivaldi",
+                          "Name":  "Vivaldi"
+                      },
+                      {
+                          "ID":  "Opera.Opera",
+                          "Name":  "Opera"
+                      },
+                      {
+                          "ID":  "Opera.OperaGX",
+                          "Name":  "Opera GX"
+                      }
+                  ]
+    },
+    {
+        "Name":  "File Sharing",
+        "Value":  [
+                      {
+                          "ID":  "qBittorrent.qBittorrent",
+                          "Name":  "qBittorrent"
+                      },
+                      {
+                          "ID":  "Tonec.InternetDownloadManager",
+                          "Name":  "Internet Download Manager"
+                      },
+                      {
+                          "ID":  "Transmission.Transmission",
+                          "Name":  "Transmission"
+                      },
+                      {
+                          "ID":  "CometNetwork.BitComet",
+                          "Name":  "BitComet"
+                      },
+                      {
+                          "ID":  "DelugeTeam.Deluge",
+                          "Name":  "Deluge"
+                      },
+                      {
+                          "ID":  "AppWork.JDownloader",
+                          "Name":  "JDownloader 2"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Media",
+        "Value":  [
+                      {
+                          "ID":  "VideoLAN.VLC",
+                          "Name":  "VLC Media Player"
+                      },
+                      {
+                          "ID":  "CodecGuide.K-LiteCodecPack.Full",
+                          "Name":  "K-Lite Codec Pack"
+                      },
+                      {
+                          "ID":  "GOMLab.GOMPlayer",
+                          "Name":  "GOM Player"
+                      },
+                      {
+                          "ID":  "Spotify.Spotify",
+                          "Name":  "Spotify"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Virtualization",
+        "Value":  [
+                      {
+                          "ID":  "Oracle.VirtualBox",
+                          "Name":  "VirtualBox"
+                      },
+                      {
+                          "ID":  "VMware.WorkstationPro",
+                          "Name":  "VMware Workstation"
+                      },
+                      {
+                          "ID":  "Docker.DockerDesktop",
+                          "Name":  "Docker Desktop"
+                      },
+                      {
+                          "ID":  "BlueStack.BlueStacks",
+                          "Name":  "BlueStacks"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Gaming",
+        "Value":  [
+                      {
+                          "ID":  "Valve.Steam",
+                          "Name":  "Steam"
+                      },
+                      {
+                          "ID":  "EpicGames.EpicGamesLauncher",
+                          "Name":  "Epic Games Launcher"
+                      },
+                      {
+                          "ID":  "Ubisoft.Connect",
+                          "Name":  "Ubisoft Connect"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Utilities",
+        "Value":  [
+                      {
+                          "ID":  "TeamViewer.TeamViewer",
+                          "Name":  "TeamViewer"
+                      },
+                      {
+                          "ID":  "CodeSector.TeraCopy",
+                          "Name":  "TeraCopy"
+                      },
+                      {
+                          "ID":  "WinDirStat.WinDirStat",
+                          "Name":  "WinDirStat"
+                      },
+                      {
+                          "ID":  "Open-Shell.Open-Shell-Menu",
+                          "Name":  "Open Shell"
+                      },
+                      {
+                          "ID":  "Piriform.CCleaner",
+                          "Name":  "CCleaner"
+                      },
+                      {
+                          "ID":  "AntibodySoftware.WizTree",
+                          "Name":  "WizTree"
+                      },
+                      {
+                          "ID":  "Guru3D.Afterburner",
+                          "Name":  "MSI Afterburner"
+                      },
+                      {
+                          "ID":  "FxSoundLLC.FxSound",
+                          "Name":  "FxSound"
+                      },
+                      {
+                          "ID":  "HiBitSoftware.StartUpManager",
+                          "Name":  "HiBit StartUp Manager"
+                      },
+                      {
+                          "ID":  "HiBitSoftware.HiBitUninstaller",
+                          "Name":  "HiBit Uninstaller"
+                      },
+                      {
+                          "ID":  "RevoUninstaller.RevoUninstaller",
+                          "Name":  "Revo Uninstaller"
+                      },
+                      {
+                          "ID":  "Nilesoft.Shell",
+                          "Name":  "Nilesoft Shell"
+                      }
+                  ]
+    },
+    {
+        "Name":  "Security",
+        "Value":  [
+                      {
+                          "ID":  "9P6PMZTM93LR",
+                          "Name":  "Microsoft Defender"
+                      },
+                      {
+                          "ID":  "XPDNZJFNCR1B07",
+                          "Name":  "Avast Free Antivirus"
+                      },
+                      {
+                          "ID":  "XP8BX2DWV7TF50",
+                          "Name":  "AVG AntiVirus Free"
+                      },
+                      {
+                          "ID":  "Malwarebytes.Malwarebytes",
+                          "Name":  "Malwarebytes"
+                      }
+                  ]
+    }
+]

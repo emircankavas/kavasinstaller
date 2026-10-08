@@ -1,797 +1,432 @@
+# Kavas Installer 2.0 - entry point.
+# NOTE: this file is intentionally pure ASCII. All localized/non-ASCII text lives in
+# strings.json and is read back explicitly as UTF-8. That keeps the script immune to the
+# PowerShell 5.1 "no BOM = ANSI" problem, so it parses identically whether it is run with
+# `irm <url> | iex` or with `powershell -File launcher.ps1`.
+
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName PresentationCore
+Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# Load shell32.dll and extract the icon
-Add-Type -TypeDefinition @"
-using System;
-using System.Runtime.InteropServices;
-public class Shell32
-{
-    [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-    public static extern IntPtr ExtractIcon(IntPtr hinst, string lpszExeFileName, int nIconIndex);
-}
-"@
+$script:BaseUrl    = 'https://raw.githubusercontent.com/emircankavas/kavasinstaller/main'
+$script:AppVersion = '2.0'
 
+# ---------------------------------------------------------------- resources
 
-$appVersion = "1.0"
+$launchDir = $null
+if ($MyInvocation.MyCommand.Path) { $launchDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
 
-$translations = @{
-    "en-US" = @{
-        "Compression" = "Compression";
-        "Development" = "Development";
-        "Documents" = "Documents";
-        "Imaging" = "Imaging";
-        "Messaging" = "Messaging";
-        "Web Browsers" = "Web Browsers";
-        "File Sharing" = "File Sharing";
-        "Media" = "Media";
-        "Gaming" = "Gaming";
-        "Utilities" = "Utilities";
-        "Virtualization" = "Virtualization";
-        "Security" = "Security";
-        "Dependencies" = "Dependencies";
-        "Title" = "Kavas Installer $appVersion";
-        "Install" = "Install";
-        "Complete" = "Installation Complete";
-        "NoSelection" = "No applications selected.";
-        "Waiting" = "Waiting for installation to start...";
-        "Installing" = "Installing";
-        "Search" = "Start typing to search";
-        "wingetNotInstalled" = "winget is not installed. Please install it manually through the Microsoft Store by searching for 'App Installer' or check the documentation for your Windows version for alternative installation methods.";
-        "Save" = "Save selected apps to JSON file";
-        "Load" = "Load selected apps from JSON file";
-        "Import" = "▼ Import";
-        "Export" = "▲ Export";
-        "Placeholder" = "Start typing to search";
-        "All" = "All";
-        "Upgrade" = "Upgrade";
-        "UpgradeComplete" = "Update Complete";
-        "Upgrading" = "Updating";
-        "NothingToUpgrade" = "No installed applications found to update.";
-        "NotificationTitle" = "Some installations failed";
+function Read-Utf8Text {
+    param([string]$Source)
+    if ($Source -match '^https?://') {
+        $ProgressPreference = 'SilentlyContinue'
+        $wc = New-Object System.Net.WebClient
+        $wc.Encoding = New-Object System.Text.UTF8Encoding($false)
+        return $wc.DownloadString($Source)
     }
-    "tr-TR" = @{
-        "Compression" = "Sıkıştırma";
-        "Development" = "Geliştirme";
-        "Documents" = "Dokümanlar";
-        "Imaging" = "Görüntüleme";
-        "Messaging" = "Mesajlaşma";
-        "Web Browsers" = "Web Tarayıcılar";
-        "File Sharing" = "Dosya Paylaşımı";
-        "Media" = "Medya";
-        "Gaming" = "Oyunlar";
-        "Utilities" = "Araçlar";
-        "Virtualization" = "Sanallaştırma";
-        "Security" = "Güvenlik";
-        "Dependencies" = "Bağımlılıklar";
-        "Title" = "Kavas Yükleyici $appVersion";
-        "Install" = "Yükle";
-        "Complete" = "Yükleme Tamamlandı";
-        "NoSelection" = "Hiçbir uygulama seçilmedi.";
-        "Waiting" = "Yüklemenin başlaması bekleniyor...";
-        "Installing" = "Yükleniyor";
-        "Search" = "Aramak için yazmaya başlayın";
-        "wingetNotInstalled" = "winget yüklü değil. Lütfen 'App Installer' uygulamasını Microsoft Store'dan arayarak manuel olarak yükleyin veya alternatif yükleme yöntemleri için Windows sürümünüzün belgelerine bakın.";
-        "Save" = "Seçilen uygulamaları JSON'a kaydet";
-        "Load" = "Seçilen uygulamaları JSON'dan yükle";
-        "Import" = "▼ İçe Aktar";
-        "Export" = "▲ Dışa Aktar";
-        "Placeholder" = "Aramak için yazmaya başlayın";
-        "All" = "Tümü";
-        "Upgrade" = "Güncelle";
-        "UpgradeComplete" = "Güncelleme Tamamlandı";
-        "Upgrading" = "Güncelleniyor";
-        "NothingToUpgrade" = "Güncellenecek yüklü uygulama bulunamadı.";
-        "NotificationTitle" = "Bazı yüklemeler başarısız oldu";
-    }
+    $p = $Source -replace '^file:///', ''
+    return [System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8)
 }
 
-function Get-LocalizedText {
-    param (
-        [string]$key
-    )
-    $currentCulture = (Get-Culture).Name
-    if ($translations.ContainsKey($currentCulture) -and $translations[$currentCulture].ContainsKey($key)) {
-        return $translations[$currentCulture][$key]
-    } elseif ($translations["en-US"].ContainsKey($key)) {
-        # Fallback to English if the current culture is not supported or the key is missing
-        return $translations["en-US"][$key]
-    } else {
-        return "Undefined"
+function Resolve-Resource {
+    param([string]$Name)
+    $candidates = @()
+    if ($launchDir) { $candidates += (Join-Path $launchDir $Name) }
+    $candidates += $Name
+    foreach ($c in $candidates) {
+        if (Test-Path -LiteralPath $c) { return (Resolve-Path -LiteralPath $c).Path }
+    }
+    return "$script:BaseUrl/$Name"
+}
+
+$catalog = (Read-Utf8Text (Resolve-Resource 'catalog.json')) | ConvertFrom-Json
+$strings = (Read-Utf8Text (Resolve-Resource 'strings.json')) | ConvertFrom-Json
+
+$script:Lang = 'en-US'
+$requested = (Get-Culture).Name
+if ($strings.PSObject.Properties.Name -contains $requested) { $script:Lang = $requested }
+
+function T {
+    param([string]$Key)
+    $d = $strings.$($script:Lang)
+    if ($d.PSObject.Properties.Name -contains $Key) { return $d.$Key }
+    return $strings.'en-US'.$Key
+}
+function TCat {
+    param([string]$Name)
+    $d = $strings.$($script:Lang)
+    $v = $d.Categories.$Name
+    if ($v) { return $v }
+    return $strings.'en-US'.Categories.$Name
+}
+
+# ---------------------------------------------------------------- model
+
+Add-Type -ReferencedAssemblies 'WindowsBase','PresentationFramework' -TypeDefinition @'
+using System.ComponentModel;
+public class AppCard : INotifyPropertyChanged {
+    public string ID { get; set; }
+    public string Name { get; set; }
+    public string Category { get; set; }
+    public bool Match { get; set; }
+    private bool _checked;
+    public bool Checked { get { return _checked; } set { _checked = value; Raise("Checked"); } }
+    private string _status;
+    public string Status { get { return _status; } set { _status = value; Raise("Status"); } }
+    private string _statusKind = "";
+    public string StatusKind { get { return _statusKind; } set { _statusKind = value; Raise("StatusKind"); } }
+    public string StatusKey { get; set; }
+    public event PropertyChangedEventHandler PropertyChanged;
+    void Raise(string p) { if (PropertyChanged != null) PropertyChanged(this, new PropertyChangedEventArgs(p)); }
+}
+'@
+
+$allCards = New-Object System.Collections.ArrayList
+foreach ($g in $catalog) {
+    foreach ($app in $g.Value) {
+        $c = New-Object AppCard
+        $c.ID = $app.ID
+        $c.Name = $app.Name
+        $c.Category = $g.Name
+        $c.Match = $true
+        $c.StatusKey = 'Unknown'
+        $c.Status = ''
+        $c.StatusKind = ''
+        [void]$allCards.Add($c)
     }
 }
 
-# Temp files downloaded at runtime are tracked here so they can be cleaned up on exit
-$script:tempFiles = @()
+# ---------------------------------------------------------------- view
 
-function Get-Image {
-    param (
-        [string]$url
-    )
-    $tempFilePath = [System.IO.Path]::GetTempFileName()
-    $ProgressPreference = 'SilentlyContinue'
-    Invoke-WebRequest -Uri $url -OutFile $tempFilePath
-    $script:tempFiles += $tempFilePath
+$xaml = Read-Utf8Text (Resolve-Resource 'App.xaml')
+$reader = New-Object System.Xml.XmlNodeReader ([xml]$xaml)
+$script:win = [Windows.Markup.XamlReader]::Load($reader)
+$win = $script:win
 
-    return $tempFilePath
+function N { param([string]$Name) return $win.FindName($Name) }
+
+$TitleBar        = N 'TitleBar'
+$AppTitle        = N 'AppTitle'
+$Subtitle        = N 'Subtitle'
+$BtnMin          = N 'BtnMin'
+$BtnMax          = N 'BtnMax'
+$BtnClose        = N 'BtnClose'
+$CatList         = N 'CatList'
+$SearchBox       = N 'SearchBox'
+$SearchPlaceholder = N 'SearchPlaceholder'
+$SelectedCount   = N 'SelectedCount'
+$BtnClear        = N 'BtnClear'
+$BtnAll          = N 'BtnAll'
+$Cards           = N 'Cards'
+$Bar             = N 'Bar'
+$StatusText      = N 'StatusText'
+$BtnInstall      = N 'BtnInstall'
+$BtnUpgrade      = N 'BtnUpgrade'
+$BtnUninstall    = N 'BtnUninstall'
+$BtnTr           = N 'BtnTr'
+$BtnEn           = N 'BtnEn'
+$VersionText     = N 'VersionText'
+
+# ---------------------------------------------------------------- filtering
+
+function Apply-Filter {
+    $key = $null
+    if ($CatList.SelectedItem) { $key = $CatList.SelectedItem.Key }
+    $q = ''
+    if ($SearchBox.Text) { $q = $SearchBox.Text.ToLower().Trim() }
+    $list = New-Object System.Collections.ArrayList
+    foreach ($c in $allCards) {
+        $okCat = ($null -eq $key) -or ($key -eq '__all__') -or ($c.Category -eq $key)
+        $okTxt = ($q -eq '') -or ($c.Name.ToLower().Contains($q))
+        $c.Match = ($okCat -and $okTxt)
+        if ($c.Match) { [void]$list.Add($c) }
+    }
+    $Cards.ItemsSource = $list
+    if ($q -eq '' -and -not $SearchBox.IsKeyboardFocusWithin) { $SearchPlaceholder.Visibility = 'Visible' }
+    else { $SearchPlaceholder.Visibility = 'Collapsed' }
+    Update-Count
 }
 
-# Animated warning notification shown briefly without blocking the UI
-function Show-Notification {
-    param (
-        [string]$Message
-    )
+function Update-Count {
+    $n = 0
+    foreach ($c in $allCards) { if ($c.Checked) { $n++ } }
+    $fmt = T 'SelectedCount'
+    if ($fmt) { $SelectedCount.Text = ($fmt -f $n) } else { $SelectedCount.Text = "$n" }
+}
+
+# ---------------------------------------------------------------- toasts
+
+$script:notify = New-Object System.Windows.Forms.NotifyIcon
+$script:notify.Visible = $true
+$script:notify.Icon = [System.Drawing.SystemIcons]::Information
+
+function Show-Toast {
+    param([string]$Message, [bool]$Warning = $false)
     try {
-        $notify = New-Object System.Windows.Forms.NotifyIcon
-        $notify.Icon = [System.Drawing.SystemIcons]::Warning
-        $notify.Visible = $true
-        $notify.ShowBalloonTip(5000, $(Get-LocalizedText -key 'NotificationTitle'), $Message, [System.Windows.Forms.ToolTipIcon]::Warning)
-        $script:activeNotify = $notify
-        $notifyTimer = New-Object System.Windows.Forms.Timer
-        $notifyTimer.Interval = 6000
-        $notifyTimer.Add_Tick({
-            $notifyTimer.Stop()
-            if ($script:activeNotify) { $script:activeNotify.Dispose(); $script:activeNotify = $null }
-        })
-        $notifyTimer.Start()
-    } catch {
-        # Notification is best-effort; never break the installer because of it
-    }
+        $script:notify.Icon = if ($Warning) { [System.Drawing.SystemIcons]::Warning } else { [System.Drawing.SystemIcons]::Information }
+        $script:notify.BalloonTipTitle = T 'Title'
+        $script:notify.BalloonTipText = $Message
+        $script:notify.ShowBalloonTip(5000)
+    } catch { }
 }
 
-function Save-File($selectedApps) {
-    # Create a new SaveFileDialog object
-    $saveFileDialog = New-Object System.Windows.Forms.SaveFileDialog
+# ---------------------------------------------------------------- winget ops
 
-    # Set the properties of the SaveFileDialog
-    $saveFileDialog.Title = "Save File"
-    $saveFileDialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
-    $saveFileDialog.DefaultExt = "json"
-    $saveFileDialog.AddExtension = $true
-
-    if ($saveFileDialog.ShowDialog() -eq 'OK') {
-        # Save the selected applications to the file
-        Write-Output $selectedApps | ConvertTo-Json | Out-File -FilePath $saveFileDialog.FileName
-    }
-} 
-
-
-# Check if winget is available
-if (-not(Get-Command winget -ErrorAction SilentlyContinue)) {
-    Write-Output $(Get-LocalizedText -key 'wingetNotInstalled')
+$script:WingetPath = (Get-Command winget -ErrorAction SilentlyContinue).Source
+if (-not $script:WingetPath) {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.MessageBox]::Show((T 'wingetNotInstalled'), (T 'Title')) | Out-Null
     exit
 }
 
-
-
-# Create a new form
-$form = New-Object System.Windows.Forms.Form
-$form.Text = Get-LocalizedText -key 'Title'
-$form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
-$form.FormBorderStyle = 'None'
-
-
-$url = "https://preview.redd.it/w0qg2oanfel51.png?width=1080&crop=smart&auto=webp&s=46e6727910dc87c062f10ea077f2485d70eb428f"
-$backgroundImage = $(Get-Image -url $url)
-
-$form.BackgroundImage = [System.Drawing.Image]::FromFile($backgroundImage)
-$form.BackgroundImageLayout = 'Stretch'
-
-# Create the close button
-$closeButton = New-Object System.Windows.Forms.Button
-$closeButton.Text = "x"
-$closeButton.ForeColor = 'Gray'
-$closeButton.BackColor = 'Red'
-$closeButton.Width = 15
-$closeButton.Height = 15
-$closeButton.Location = New-Object System.Drawing.Point(10, 10)
-$closeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$closeButton.FlatAppearance.BorderSize = 0
-$closeButton.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 8.25, [System.Drawing.FontStyle]::Bold)
-$closeButton.Region = New-Object System.Drawing.Region([System.Drawing.Drawing2D.GraphicsPath]::new())
-$closeButton.Region.MakeInfinite()
-$closeButton.Region.Exclude([System.Drawing.Rectangle]::new(0, 0, 20, 20))
-$closeButton.Region.Exclude([System.Drawing.Rectangle]::new(1, 1, 18, 18))
-$path = New-Object System.Drawing.Drawing2D.GraphicsPath
-$path.AddEllipse(0, 0, $closeButton.Width, $closeButton.Height)
-$closeButton.Region = New-Object System.Drawing.Region($path)
-$closeButton.Add_Click({
-    $form.Close()
-})
-$form.Controls.Add($closeButton)
-
-# Create the minimize button
-$minimizeButton = New-Object System.Windows.Forms.Button
-$minimizeButton.Text = "-"
-$minimizeButton.ForeColor = 'Gray'
-$minimizeButton.BackColor = 'Orange'
-$minimizeButton.Width = 15
-$minimizeButton.Height = 15
-$minimizeButton.Location = New-Object System.Drawing.Point(30, 10)
-$minimizeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$minimizeButton.FlatAppearance.BorderSize = 0
-$minimizeButton.Font = New-Object System.Drawing.Font("Microsoft Sans Serif", 8.25, [System.Drawing.FontStyle]::Bold)
-$minimizeButton.Region = New-Object System.Drawing.Region([System.Drawing.Drawing2D.GraphicsPath]::new())
-$minimizeButton.Region.MakeInfinite()
-$minimizeButton.Region.Exclude([System.Drawing.Rectangle]::new(0, 0, 20, 20))
-$minimizeButton.Region.Exclude([System.Drawing.Rectangle]::new(1, 1, 18, 18))
-$path = New-Object System.Drawing.Drawing2D.GraphicsPath
-$path.AddEllipse(0, 0, $minimizeButton.Width, $minimizeButton.Height)
-$minimizeButton.Region = New-Object System.Drawing.Region($path)
-$minimizeButton.Add_Click({
-    $form.WindowState = [System.Windows.Forms.FormWindowState]::Minimized
-})
-$form.Controls.Add($minimizeButton)
-
-# Create a label for the title
-$titleLabel = New-Object System.Windows.Forms.Label
-$titleLabel.Text = Get-LocalizedText -key 'Title'
-$titleLabel.Location = New-Object System.Drawing.Point(60, 10)
-$titleLabel.AutoSize = $true
-$titleLabel.BackColor = [System.Drawing.Color]::Transparent
-$titleLabel.ForeColor = [System.Drawing.Color]::White
-$titleLabel.Font = New-Object System.Drawing.Font($titleLabel.Font, [System.Drawing.FontStyle]::Bold)
-$form.Controls.Add($titleLabel)
-
-$apps = @"
-[   
-    {
-        "Name": "Compression",
-        "Value": [
-            { "ID": "7zip.7zip", "Name": "7-Zip" },
-            { "ID": "Giorgiotani.Peazip", "Name": "PeaZip" },
-            { "ID": "RARLab.WinRAR", "Name": "WinRAR" }
-        ]
-    },
-    {
-        "Name": "Development",
-        "Value": [
-            { "ID": "Notepad++.Notepad++", "Name": "Notepad++" },
-            { "ID": "Microsoft.VisualStudioCode", "Name": "Visual Studio Code" },
-            { "ID": "Python.Python.3.12", "Name": "Python 3.12" },
-            { "ID": "PuTTY.PuTTY", "Name": "PuTTY" },
-            { "ID": "WinSCP.WinSCP", "Name": "WinSCP" },
-            { "ID": "WinMerge.WinMerge", "Name": "WinMerge" },
-            { "ID": "Git.Git", "Name": "Git" }
-        ]
-    },
-    {
-        "Name": "Dependencies",
-        "Value": [
-            { "ID": "abbodi1406.vcredist", "Name": "MS Visual C++ AIO" },
-            { "ID": "Microsoft.DirectX", "Name": "DirectX" }
-        ]
-    },
-    {
-        "Name": "Documents",
-        "Value": [
-            { "ID": "Microsoft.Office", "Name": "Office 365" },
-            { "ID": "Adobe.Acrobat.Reader.64-bit", "Name": "Adobe Acrobat Reader" },
-            { "ID": "Foxit.FoxitReader", "Name": "Foxit PDF Reader" },
-            { "ID": "TheDocumentFoundation.LibreOffice", "Name": "LibreOffice" },
-            { "ID": "Kingsoft.WPSOffice.CN", "Name": "WPS Office" },
-            { "ID": "Apache.OpenOffice", "Name": "OpenOffice" }
-        ]
-    },
-    {
-        "Name": "Imaging",
-        "Value": [
-            { "ID": "IrfanSkiljan.IrfanView", "Name": "IrfanView" },
-            { "ID": "dotPDNLLC.paintdotnet", "Name": "Paint.NET" },
-            { "ID": "GIMP.GIMP", "Name": "GIMP" },
-            { "ID": "BlenderFoundation.Blender", "Name": "Blender" }
-        ]
-    },
-    {
-        "Name": "Messaging",
-        "Value": [
-            { "ID": "Discord.Discord", "Name": "Discord" },
-            { "ID": "Microsoft.Skype", "Name": "Skype" },
-            { "ID": "Mozilla.Thunderbird", "Name": "Thunderbird" },
-            { "ID": "Zoom.Zoom", "Name": "Zoom" },
-            { "ID": "9NKSQGP7F2NH", "Name": "WhatsApp" },
-            { "ID": "Telegram.TelegramDesktop", "Name": "Telegram" }
-        ]
-    },
-    {
-        "Name": "Web Browsers",
-        "Value": [
-            { "ID": "Ablaze.Floorp", "Name": "Floorp" },
-            { "ID": "Brave.Brave", "Name": "Brave" },
-            { "ID": "Google.Chrome", "Name": "Google Chrome" },
-            { "ID": "Mozilla.Firefox", "Name": "Firefox" },
-            { "ID": "Vivaldi.Vivaldi", "Name": "Vivaldi" },
-            { "ID": "Opera.Opera", "Name": "Opera" },
-            { "ID": "Opera.OperaGX", "Name": "Opera GX" }
-        ]
-    },
-    {
-        "Name": "File Sharing",
-        "Value": [
-            { "ID": "qBittorrent.qBittorrent", "Name": "qBittorrent" },
-            { "ID": "Tonec.InternetDownloadManager", "Name": "Internet Download Manager" },
-            { "ID": "Transmission.Transmission", "Name": "Transmission" },
-            { "ID": "CometNetwork.BitComet", "Name": "BitComet" },
-            { "ID": "DelugeTeam.Deluge", "Name": "Deluge" },
-            { "ID": "AppWork.JDownloader", "Name": "JDownloader 2" }
-        ]
-    },
-    {
-        "Name": "Media",
-        "Value": [
-            { "ID": "VideoLAN.VLC", "Name": "VLC Media Player" },
-            { "ID": "CodecGuide.K-LiteCodecPack.Full", "Name": "K-Lite Codec Pack" },
-            { "ID": "GOMLab.GOMPlayer", "Name": "GOM Player" },
-            { "ID": "Spotify.Spotify", "Name": "Spotify" }
-        ]
-    },
-    {
-        "Name": "Virtualization",
-        "Value": [
-            { "ID": "Oracle.VirtualBox", "Name": "VirtualBox" },
-            { "ID": "VMware.WorkstationPro", "Name": "VMware Workstation" },
-            { "ID": "Docker.DockerDesktop", "Name": "Docker Desktop" },
-            { "ID": "BlueStack.BlueStacks", "Name": "BlueStacks" }
-        ]
-    },
-    {
-        "Name": "Gaming",
-        "Value": [
-            { "ID": "Valve.Steam", "Name": "Steam" },
-            { "ID": "EpicGames.EpicGamesLauncher", "Name": "Epic Games Launcher" },
-            { "ID": "Ubisoft.Connect", "Name": "Ubisoft Connect" }
-        ]
-    },
-    {
-        "Name": "Utilities",
-        "Value": [
-            { "ID": "TeamViewer.TeamViewer", "Name": "TeamViewer" },
-            { "ID": "CodeSector.TeraCopy", "Name": "TeraCopy" },
-            { "ID": "WinDirStat.WinDirStat", "Name": "WinDirStat" },
-            { "ID": "Open-Shell.Open-Shell-Menu", "Name": "Open Shell" },
-            { "ID": "Piriform.CCleaner", "Name": "CCleaner" },
-            { "ID": "AntibodySoftware.WizTree", "Name": "WizTree" },
-            { "ID": "Guru3D.Afterburner", "Name": "MSI Afterburner" },
-            { "ID": "FxSoundLLC.FxSound", "Name": "FxSound" },
-            { "ID": "HiBitSoftware.StartUpManager", "Name": "HiBit StartUp Manager" },
-            { "ID": "HiBitSoftware.HiBitUninstaller", "Name": "HiBit Uninstaller" },
-            { "ID": "RevoUninstaller.RevoUninstaller", "Name": "Revo Uninstaller" },
-            { "ID": "Nilesoft.Shell", "Name": "Nilesoft Shell"}
-        ]
-    },
-    {
-        "Name": "Security",
-        "Value": [
-            { "ID": "9P6PMZTM93LR", "Name": "Microsoft Defender" },
-            { "ID": "XPDNZJFNCR1B07", "Name": "Avast Free Antivirus" },
-            { "ID": "XP8BX2DWV7TF50", "Name": "AVG AntiVirus Free" },
-            { "ID": "Malwarebytes.Malwarebytes", "Name": "Malwarebytes" }
-        ]
-    }
-]
-"@
-
-$groupedApplications = $apps | ConvertFrom-Json
-
-$categoryPerColumn = 3
-
-# Integer division rounds up so the last category never overflows into a phantom column
-$columnsNeeded = [math]::Ceiling($groupedApplications.Count / $categoryPerColumn)
-$columnWidth = 200 # Define column width
-$formWidth = ($columnWidth * $columnsNeeded) # Calculate form width based on columns needed
-
-# Layout variables
-$xPos = 10
-$yPos = 10
-$columnHeight = 0
-
-# Create category filter
-$comboCategory = New-Object System.Windows.Forms.ComboBox
-$comboCategoryXPos = $formWidth
-$comboCategory.Location = New-Object System.Drawing.Point($comboCategoryXPos, $yPos)
-$comboCategory.Size = New-Object System.Drawing.Size(180, 22)
-$comboCategory.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-$comboCategory.Items.Add((Get-LocalizedText -key 'All')) | Out-Null
-foreach ($g in $groupedApplications) { $comboCategory.Items.Add((Get-LocalizedText -key $g.Name)) | Out-Null }
-$comboCategory.SelectedIndex = 0
-$form.Controls.Add($comboCategory)
-
-# Create search box
-$searchBox = New-Object System.Windows.Forms.TextBox
-$searchBoxXPos = $formWidth
-$searchBox.Location = New-Object System.Drawing.Point($searchBoxXPos, ($yPos + 27))
-$searchBox.Size = New-Object System.Drawing.Size(180, 20)
-
-# Placeholder text handled explicitly so it is never treated as a real query
-$script:placeholderText = Get-LocalizedText -key 'Placeholder'
-$searchBox.Text = $script:placeholderText
-$searchBox.ForeColor = [System.Drawing.Color]::Gray
-$searchBox.Add_Enter({
-    if ($searchBox.Text -eq $script:placeholderText) {
-        $searchBox.Text = ""
-        $searchBox.ForeColor = [System.Drawing.Color]::Black
-    }
-})
-$searchBox.Add_Leave({
-    if ([string]::IsNullOrWhiteSpace($searchBox.Text)) {
-        $searchBox.Text = $script:placeholderText
-        $searchBox.ForeColor = [System.Drawing.Color]::Gray
-    }
-})
-
-# Each checkbox is mapped to its localized category so filtering can use both
-$script:checkboxCategory = @{}
-
-# Filtering only toggles visibility, so selections survive filtering
-$script:ApplyFilter = {
-    $query = ""
-    if ($script:searchBox.Text -ne $script:placeholderText) { $query = $script:searchBox.Text.ToLower() }
-    $allCategories = ($script:comboCategory.SelectedIndex -eq 0)
-    $selectedCat = $script:comboCategory.SelectedItem
-    foreach ($cb in $checkboxes) {
-        $matchesCat = $allCategories -or ($script:checkboxCategory[$cb] -eq $selectedCat)
-        $matchesTxt = ($query -eq "") -or ($cb.Text.ToLower().Contains($query))
-        $cb.Visible = ($matchesCat -and $matchesTxt)
-    }
-}
-$searchBox.Add_TextChanged({ & $script:ApplyFilter })
-$comboCategory.Add_SelectedIndexChanged({ & $script:ApplyFilter })
-$form.Controls.Add($searchBox)
-
-$yPos += 60
-
-# Create UI elements grouped by category and adjust for columns
-
-$idx = 1
-$checkboxes = @()
-
-foreach ($group in $groupedApplications) {
-    # Add category icon
-    $image = Get-Image -url "https://raw.githubusercontent.com/emircankavas/kavasinstaller/main/icons/categories/$($group.Name).png"
-    $icon = [System.Drawing.Image]::FromFile($image)
-    $pictureBox = new-object Windows.Forms.PictureBox
-    $pictureBox.Location = New-Object System.Drawing.Size(($xPos + 5), $yPos)
-    $pictureBox.Size = New-Object System.Drawing.Size(20,20)
-    $pictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
-    $pictureBox.Image = $icon
-    $pictureBox.BackColor = [System.Drawing.Color]::Transparent
-    $Form.controls.add($pictureBox)
-
-    # Create a label for the category
-    $label = New-Object System.Windows.Forms.Label
-    $label.Text = Get-LocalizedText -key $group.Name
-    $label.Location = New-Object System.Drawing.Point(($xPos + 25), $yPos)
-    $label.AutoSize = $true
-    $label.BackColor = [System.Drawing.Color]::Transparent
-    $label.ForeColor = [System.Drawing.Color]::White
-    $label.Font = New-Object System.Drawing.Font($label.Font, [System.Drawing.FontStyle]::Bold)
-    $form.Controls.Add($label)
-    $yPos += 25
-
-    # Create a checkbox for each application in the category
-    foreach ($app in $group.Value) {
-        $checkbox = New-Object System.Windows.Forms.CheckBox
-        $checkbox.Text = $app.Name
-        $checkbox.Tag = $app.ID # Use the Tag property to store the application ID
-        $checkboxLoc = $xPos + 10
-        $checkbox.Location = New-Object System.Drawing.Point($checkboxLoc, $yPos) # Indent checkboxes for visual grouping
-        $checkbox.AutoSize = $true
-        $checkbox.BackColor = [System.Drawing.Color]::Transparent
-        $checkbox.ForeColor = [System.Drawing.Color]::White
-
-        $form.Controls.Add($checkbox)
-        $yPos += 20
-        $checkboxes += $checkbox
-        $script:checkboxCategory[$checkbox] = Get-LocalizedText -key $group.Name
-    }
-
-    $yPos += 10 # Add some space before the next category
-    $columnHeight = [math]::Max($columnHeight, $yPos) # Track max column height
-    # Increment column index after every second category
-    # Reset yPos for each new column, and adjust xPos based on columnIndex
-    if (($idx % $categoryPerColumn) -eq 0) {
-        $xPos += $columnWidth
-        $yPos = 70
-    }
-
-    $idx++
+function Set-Busy {
+    param([bool]$Busy)
+    $BtnInstall.IsEnabled   = -not $Busy
+    $BtnUpgrade.IsEnabled   = -not $Busy
+    $BtnUninstall.IsEnabled = -not $Busy
+    $BtnClear.IsEnabled     = -not $Busy
+    $BtnAll.IsEnabled       = -not $Busy
 }
 
-# Adjust yPos for the progress bar and install button based on the tallest column
-$yPos = $columnHeight + 10
+$script:opQueue = @()
+$script:opIndex = 0
+$script:opProc = $null
+$script:opKind = 'install'
+$script:opFailures = @()
 
-# Initialize and place the progress bar at the bottom, spanning across all columns
-$progressBar = New-Object System.Windows.Forms.ProgressBar
-$progressBar.Location = New-Object System.Drawing.Point(10, $yPos)
-$progressBar.Style = 'Continuous'
-$progressBar.Minimum = 0
-$progressBar.Maximum = 100
-$progressBar.Value = 0
-$progressBar.Step = 1
-$progressBarSize = $formWidth + 165
-$progressBar.Size = New-Object System.Drawing.Size($progressBarSize, 10) # Span across the form width
-$form.Controls.Add($progressBar)
-
-
-# Initialize and place the label for current installing program above the progress bar
-$installingLabel = New-Object System.Windows.Forms.Label
-$installingLabelLocation = $yPos + 25
-$installingLabel.Location = New-Object System.Drawing.Point(10, $installingLabelLocation) # Position above the progress bar
-$installingLabel.Size = New-Object System.Drawing.Size($progressBarSize, 20) # Same width as the progress bar for alignment
-$installingLabel.Text = Get-LocalizedText -key 'Waiting'
-
-$installingLabel.BackColor = [System.Drawing.Color]::Transparent
-$installingLabel.ForeColor = [System.Drawing.Color]::White
-$form.Controls.Add($installingLabel)
-
-# Update yPos for the progress bar based on the new label, adding space
-$yPos += 20 # Adjust if needed based on actual layout
-
-# Update yPos for the install button, adding space after the progress bar
-$yPos += 50
-
-# Initialize and center the install button below the progress bar
-$buttonInstall = New-Object System.Windows.Forms.Button
-$buttonInstall.Text = Get-LocalizedText -key 'Install'
-$buttonInstallLocation = ($formWidth + 100) / 2 # Center the button
-$buttonInstall.Location = New-Object System.Drawing.Point($buttonInstallLocation, $yPos) # Center the button
-$buttonInstall.Size = New-Object System.Drawing.Size(100, 50)
-$icon = [System.Drawing.Icon]::ExtractAssociatedIcon([System.Environment]::GetFolderPath('System') + '\msiexec.exe')
-$buttonInstall.Image = $icon.ToBitmap()
-
-$buttonInstall.BackColor = [System.Drawing.Color]::Transparent
-$buttonInstall.TextAlign = 'MiddleRight'
-$buttonInstall.TextImageRelation = 'ImageBeforeText'
-$buttonInstall.ForeColor = [System.Drawing.Color]::White
-$buttonInstall.Font = New-Object System.Drawing.Font($buttonInstall.Font, [System.Drawing.FontStyle]::Bold)
-$form.Controls.Add($buttonInstall)
-
-# Resolve winget to a full path so background processes can start it reliably
-$wingetPath = (Get-Command winget -ErrorAction SilentlyContinue).Source
-
-# Queue state used to install one app at a time without blocking the UI thread
-$script:installQueue = @()
-$script:installIndex = 0
-$script:currentProc = $null
-$script:failedApps = @()
-
-function Start-NextInstall {
-    if ($script:installIndex -ge $script:installQueue.Count) {
-        # All apps processed
-        $script:pollTimer.Stop()
-        $script:currentProc = $null
-        $buttonInstall.Enabled = $true
-        $buttonLoad.Enabled = $true
-        $buttonSave.Enabled = $true
-        if ($script:failedApps.Count -gt 0) {
-            $failedList = ($script:failedApps -join ", ")
-            $installingLabel.Text = Get-LocalizedText -key 'Complete'
-            [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key 'Complete') + "`n" + (Get-LocalizedText -key 'NotificationTitle') + ": " + $failedList)
-        } else {
-            $installingLabel.Text = Get-LocalizedText -key 'Complete'
-            [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key 'Complete'))
-        }
-        return
+function Start-NextOp {
+    if ($script:opIndex -ge $script:opQueue.Count) { Finish-Op; return }
+    $it = $script:opQueue[$script:opIndex]
+    if ($script:opKind -eq 'upgrade') {
+        $arguments = 'upgrade --all --include-unknown --accept-package-agreements --accept-source-agreements --silent --disable-interactivity'
+        $label = T 'Upgrading'
+    } else {
+        $verb = if ($script:opKind -eq 'uninstall') { 'uninstall' } else { 'install' }
+        $arguments = "$verb `"$($it.Id)`" --accept-package-agreements --accept-source-agreements --silent --disable-interactivity"
+        $verbTxt = if ($script:opKind -eq 'uninstall') { T 'Uninstalling' } else { T 'Installing' }
+        $label = "${verbTxt}: $($it.Name)"
     }
-
-    $app = $script:installQueue[$script:installIndex]
-    $installingLabel.Text = "[$($script:installIndex + 1)/$($script:installQueue.Count)] $(Get-LocalizedText -key 'Installing'): $($app.Name)"
+    $StatusText.Text = "[$($script:opIndex + 1)/$($script:opQueue.Count)] $label"
 
     $p = New-Object System.Diagnostics.Process
-    $p.StartInfo.FileName = $wingetPath
-    # --accept flags suppress prompts; --disable-interactivity keeps output small
-    $p.StartInfo.Arguments = "install `"$($app.ID)`" --accept-package-agreements --accept-source-agreements --silent --disable-interactivity"
+    $p.StartInfo.FileName = $script:WingetPath
+    $p.StartInfo.Arguments = $arguments
     $p.StartInfo.UseShellExecute = $false
     $p.StartInfo.CreateNoWindow = $true
     [void]$p.Start()
-    $script:currentProc = $p
+    $script:opProc = $p
 }
 
-# Poll the running process on the UI thread; UI stays responsive between ticks
-$script:pollTimer = New-Object System.Windows.Forms.Timer
-$script:pollTimer.Interval = 300
-$script:pollTimer.Add_Tick({
-    if ($null -ne $script:currentProc -and $script:currentProc.HasExited) {
-        $exitCode = $script:currentProc.ExitCode
-        $app = $script:installQueue[$script:installIndex]
-        if ($exitCode -ne 0) {
-            $script:failedApps += $app.Name
-            Show-Notification ("$($app.Name) ($exitCode)")
-        }
-        $progressBar.PerformStep()
-        $script:installIndex++
-        $script:currentProc = $null
-        Start-NextInstall
-    }
-})
-
-# Add an event handler for the install button click
-$buttonInstall.Add_Click({
-    # Initialize an array to hold selected applications
-    $selectedApps = @()
-
-    # Iterate through the form's controls to find checked checkboxes
-    $form.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] -and $_.Checked } | ForEach-Object {
-        # Add each selected application to the array
-        $selectedApp = @{ID = $_.Tag; Name = $_.Text}
-        $selectedApps += $selectedApp
-    }
-
-    # Check if any applications were selected
-    if ($selectedApps.Count -gt 0) {
-        $buttonInstall.Enabled = $false
-        $buttonLoad.Enabled = $false
-        $buttonSave.Enabled = $false
-        $script:failedApps = @()
-        $progressBar.Value = 0
-        $progressBar.Maximum = $selectedApps.Count
-        $script:installQueue = $selectedApps
-        $script:installIndex = 0
-        $script:pollTimer.Start()
-        Start-NextInstall
+function Finish-Op {
+    $script:opTimer.Stop()
+    $Bar.IsIndeterminate = $false
+    Set-Busy $false
+    $doneKey = 'Complete'
+    if ($script:opKind -eq 'uninstall') { $doneKey = 'UninstallComplete' }
+    elseif ($script:opKind -eq 'upgrade') { $doneKey = 'UpgradeComplete' }
+    if ($script:opFailures.Count -gt 0) {
+        $msg = (T 'FailedTitle') + ': ' + ($script:opFailures -join ', ')
+        $StatusText.Text = $msg
+        Show-Toast $msg $true
     } else {
-        [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "NoSelection"))
+        $msg = T $doneKey
+        $StatusText.Text = $msg
+        Show-Toast $msg $false
     }
-})
+    Start-Discovery
+}
 
-$form.Controls.Add($buttonInstall)
+function Start-Op {
+    param([string]$Kind, $Items)
+    $script:opKind = $Kind
+    $script:opQueue = @($Items) + @()
+    $script:opIndex = 0
+    $script:opFailures = @()
+    Set-Busy $true
+    $Bar.Value = 0
+    $Bar.Maximum = [Math]::Max(1, $script:opQueue.Count)
+    $Bar.IsIndeterminate = ($Kind -eq 'upgrade')
+    $script:opTimer.Start()
+    Start-NextOp
+}
 
+function Get-Checked {
+    $res = @()
+    foreach ($c in $allCards) { if ($c.Checked) { $res += @{ Id = $c.ID; Name = $c.Name } } }
+    return $res
+}
 
-# Add button which named "Load selected apps". It will load selected apps from a file.
-$buttonLoad = New-Object System.Windows.Forms.Button
-# Set button text
-$buttonLoad.Text = Get-LocalizedText -key 'Import'
+# ---------------------------------------------------------------- discovery
 
-# transparent background and no border
-$buttonLoad.BackColor = [System.Drawing.Color]::Transparent
-$buttonLoad.ForeColor = [System.Drawing.Color]::White
-$buttonLoad.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$buttonLoad.FlatAppearance.BorderSize = 0
+function Start-Discovery {
+    # Do not overwrite live operation feedback; discovery will retry when the op ends
+    if ($null -ne $script:opProc) { return }
+    $StatusText.Text = T 'Working'
+    try {
+        $script:discJob = Start-Job -ScriptBlock { param($w) & $w list --accept-source-agreements 2>$null } -ArgumentList $script:WingetPath
+        $script:discTimer.Start()
+    } catch {
+        Invoke-Discovery -Output (& $script:WingetPath list --accept-source-agreements 2>$null | Out-String)
+    }
+}
 
-
-# Locate button to right of the search box
-$buttonLoadXPos = $searchBoxXPos + 30
-$buttonLoad.Location = New-Object System.Drawing.Point($buttonLoadXPos, ($yPos + 30))
-
-$buttonLoad.Size = New-Object System.Drawing.Size(75, 24)
-# Create the ToolTip
-$toolTip = New-Object System.Windows.Forms.ToolTip
-
-# Set up the delay for the tooltip (optional)
-$toolTip.InitialDelay = 500
-$toolTip.ReshowDelay = 100
-
-# Set the tooltip text for the button
-$toolTip.SetToolTip($buttonLoad, $(Get-LocalizedText -key 'Load'))
-
-$buttonLoad.Add_Click({
-    $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
-    $openFileDialog.Title = "Open File"
-    $openFileDialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
-    $openFileDialog.DefaultExt = "json"
-    $openFileDialog.AddExtension = $true
-
-    if ($openFileDialog.ShowDialog() -eq 'OK') {
-        $selectedApps = Get-Content -Path $openFileDialog.FileName -Raw | ConvertFrom-Json
-        foreach ($app in $selectedApps) {
-            foreach ($cb in $checkboxes) {
-                if ($cb.Tag -eq $app.ID) { $cb.Checked = $true }
+function Invoke-Discovery {
+    param([string]$Output)
+    $installed = @{}
+    foreach ($line in ($Output -split "`r?`n")) {
+        $parts = [regex]::Split($line.Trim(), '\s{2,}')
+        if ($parts.Count -ge 3) {
+            $id = $parts[1]
+            if ($id -match '\.' -or $id -match '^[0-9A-Z]{12}$') {
+                $avail = $null
+                if ($parts.Count -ge 4) { $avail = $parts[3] }
+                $installed[$id] = @{ Version = $parts[2]; Available = $avail }
             }
         }
-        # Reset the filter so the newly checked apps are visible
-        $comboCategory.SelectedIndex = 0
-        if ($searchBox.Text -ne $script:placeholderText) { $searchBox.Text = "" }
     }
-})
-$form.Controls.Add($buttonLoad)
-
-# Add button which named "Save selected apps". It will save selected apps to a file.
-$buttonSave = New-Object System.Windows.Forms.Button
-# Set button text
-$buttonSave.Text = Get-LocalizedText -key 'Export'
-
-# Locate button to the right of load button
-$buttonSaveLocation = $buttonLoadXPos + 70
-$buttonSave.Location = New-Object System.Drawing.Point($buttonSaveLocation, ($yPos + 30))
-$buttonSave.Size = New-Object System.Drawing.Size(90, 24)
-
-# transparent background and no border
-$buttonSave.BackColor = [System.Drawing.Color]::Transparent
-$buttonSave.ForeColor = [System.Drawing.Color]::White
-$buttonSave.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$buttonSave.FlatAppearance.BorderSize = 0
-
-# Create the ToolTip
-$toolTip = New-Object System.Windows.Forms.ToolTip
-
-# Set up the delay for the tooltip (optional)
-$toolTip.InitialDelay = 500
-$toolTip.ReshowDelay = 100
-
-# Set the tooltip text for the button
-$toolTip.SetToolTip($buttonSave, $(Get-LocalizedText -key 'Save'))
-
-
-$buttonSave.Add_Click({
-    $selectedApps = @()
-    $form.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] -and $_.Checked } | ForEach-Object {
-        $selectedApp = @{ID = $_.Tag; Name = $_.Text}
-        $selectedApps += $selectedApp
+    foreach ($c in $allCards) {
+        if ($installed.ContainsKey($c.ID)) {
+            $avail = $installed[$c.ID].Available
+            if ($avail -and $avail -match '^[0-9]') {
+                $c.StatusKey = 'UpdateAvailable'; $c.StatusKind = 'update'
+            } else {
+                $c.StatusKey = 'Installed'; $c.StatusKind = 'installed'
+            }
+        } else {
+            $c.StatusKey = 'NotInstalled'; $c.StatusKind = ''
+        }
+        $c.Status = T $c.StatusKey
     }
-    Write-Output $selectedApps
-    Save-File -selectedApps $selectedApps
-})
-$form.Controls.Add($buttonSave)
+    $StatusText.Text = ''
+}
 
-# Add an upgrade button: updates every installed app that has a newer version
-$buttonUpgrade = New-Object System.Windows.Forms.Button
-$buttonUpgrade.Text = Get-LocalizedText -key 'Upgrade'
-$buttonUpgrade.Location = New-Object System.Drawing.Point(($buttonInstallLocation + 110), $yPos)
-$buttonUpgrade.Size = New-Object System.Drawing.Size(90, 50)
-$buttonUpgrade.BackColor = [System.Drawing.Color]::Transparent
-$buttonUpgrade.ForeColor = [System.Drawing.Color]::White
-$buttonUpgrade.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$buttonUpgrade.FlatAppearance.BorderSize = 0
-$buttonUpgrade.Font = New-Object System.Drawing.Font($buttonUpgrade.Font, [System.Drawing.FontStyle]::Bold)
-$form.Controls.Add($buttonUpgrade)
+# ---------------------------------------------------------------- language
 
-# Output of the upgrade process is buffered here to detect "nothing to update"
-$script:upgradeProc = $null
-$script:upgradeTimer = New-Object System.Windows.Forms.Timer
-$script:upgradeTimer.Interval = 300
-$script:upgradeTimer.Add_Tick({
-    if ($null -ne $script:upgradeProc -and $script:upgradeProc.HasExited) {
-        $script:upgradeTimer.Stop()
-        $script:upgradeProc = $null
-        $progressBar.Style = 'Continuous'
-        $buttonInstall.Enabled = $true
-        $buttonUpgrade.Enabled = $true
-        $buttonLoad.Enabled = $true
-        $buttonSave.Enabled = $true
-        $installingLabel.Text = Get-LocalizedText -key 'UpgradeComplete'
-        [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key 'UpgradeComplete'))
+function Set-Lang {
+    param([string]$Lang)
+    if ($strings.PSObject.Properties.Name -contains $Lang) { $script:Lang = $Lang }
+
+    $win.Title = T 'Title'
+    $AppTitle.Text = T 'Title'
+    $Subtitle.Text = T 'Subtitle'
+    $SearchPlaceholder.Text = T 'SearchPlaceholder'
+    $BtnInstall.Content = T 'Install'
+    $BtnUpgrade.Content = T 'Upgrade'
+    $BtnUninstall.Content = T 'Uninstall'
+    $BtnClear.Content = T 'ClearSelection'
+    $BtnAll.Content = T 'SelectAll'
+    $VersionText.Text = "v$script:AppVersion" + "  .  " + $script:Lang
+
+    $oldKey = $null
+    if ($CatList.SelectedItem) { $oldKey = $CatList.SelectedItem.Key }
+
+    $items = New-Object System.Collections.ArrayList
+    $total = 0
+    foreach ($c in $allCards) { $total++ }
+    [void]$items.Add([pscustomobject]@{ Key = '__all__'; Text = (T 'All') + "   $total" })
+    foreach ($g in $catalog) {
+        $n = $g.Value.Count
+        [void]$items.Add([pscustomobject]@{ Key = $g.Name; Text = (TCat $g.Name) + "   $n" })
     }
+    $CatList.ItemsSource = $items
+    $CatList.DisplayMemberPath = 'Text'
+    $idx = 0
+    for ($i = 0; $i -lt $items.Count; $i++) { if ($items[$i].Key -eq $oldKey) { $idx = $i; break } }
+    $CatList.SelectedIndex = $idx
+
+    foreach ($c in $allCards) { $c.Status = T $c.StatusKey }
+    Apply-Filter
+}
+
+# ---------------------------------------------------------------- events
+
+$TitleBar.Add_MouseLeftButtonDown({ $win.DragMove() })
+$BtnMin.Add_Click({ $win.WindowState = 'Minimized' })
+$BtnMax.Add_Click({
+    if ($win.WindowState -eq 'Maximized') { $win.WindowState = 'Normal' } else { $win.WindowState = 'Maximized' }
+})
+$BtnClose.Add_Click({ $win.Close() })
+
+$CatList.Add_SelectionChanged({ Apply-Filter })
+$SearchBox.Add_TextChanged({ Apply-Filter })
+$SearchBox.Add_GotKeyboardFocus({ $SearchPlaceholder.Visibility = 'Collapsed' })
+$SearchBox.Add_LostKeyboardFocus({ if (-not $SearchBox.Text) { $SearchPlaceholder.Visibility = 'Visible' } })
+
+$BtnClear.Add_Click({
+    foreach ($c in $allCards) { if ($c.Match) { $c.Checked = $false } }
+    Update-Count
+})
+$BtnAll.Add_Click({
+    foreach ($c in $allCards) { if ($c.Match) { $c.Checked = $true } }
+    Update-Count
 })
 
-$buttonUpgrade.Add_Click({
-    $buttonInstall.Enabled = $false
-    $buttonUpgrade.Enabled = $false
-    $buttonLoad.Enabled = $false
-    $buttonSave.Enabled = $false
-    $installingLabel.Text = Get-LocalizedText -key 'Upgrading'
+$BtnInstall.Add_Click({
+    $items = Get-Checked
+    if ($items.Count -eq 0) { Show-Toast (T 'NothingSelected') $true; return }
+    Start-Op 'install' $items
+})
 
-    # Quick check for pending upgrades (short-lived, keeps the message accurate)
-    $pending = winget upgrade --accept-source-agreements 2>&1 | Out-String
+$BtnUninstall.Add_Click({
+    $items = Get-Checked
+    if ($items.Count -eq 0) { Show-Toast (T 'NothingSelected') $true; return }
+    Add-Type -AssemblyName System.Windows.Forms
+    $names = ($items | ForEach-Object { $_.Name }) -join ', '
+    $answer = [System.Windows.Forms.MessageBox]::Show(((T 'ConfirmUninstall') + "`n`n" + $names), (T 'Title'), 'YesNo', 'Warning')
+    if ($answer -ne 'Yes') { return }
+    Start-Op 'uninstall' $items
+})
+
+$BtnUpgrade.Add_Click({
+    $StatusText.Text = T 'Working'
+    $pending = & $script:WingetPath upgrade --accept-source-agreements 2>$null | Out-String
     if ($pending -match 'No installed package|No applicable upgrade|0 package\(s\)') {
-        $installingLabel.Text = Get-LocalizedText -key 'NothingToUpgrade'
-        [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key 'NothingToUpgrade'))
-        $buttonInstall.Enabled = $true
-        $buttonUpgrade.Enabled = $true
-        $buttonLoad.Enabled = $true
-        $buttonSave.Enabled = $true
+        $StatusText.Text = T 'NothingToUpgrade'
+        Show-Toast (T 'NothingToUpgrade') $false
         return
     }
-
-    $progressBar.Style = 'Marquee'
-    $p = New-Object System.Diagnostics.Process
-    $p.StartInfo.FileName = $wingetPath
-    $p.StartInfo.Arguments = "upgrade --all --include-unknown --accept-package-agreements --accept-source-agreements --silent --disable-interactivity"
-    $p.StartInfo.UseShellExecute = $false
-    $p.StartInfo.CreateNoWindow = $true
-    [void]$p.Start()
-    $script:upgradeProc = $p
-    $script:upgradeTimer.Start()
+    Start-Op 'upgrade' @(@{ Id = '__all__'; Name = 'all' })
 })
 
-$form.Width = $formWidth + 200
-$form.Height = $yPos + 130
+$BtnTr.Add_Click({ Set-Lang 'tr-TR' })
+$BtnEn.Add_Click({ Set-Lang 'en-US' })
 
-# Remove downloaded temp images so repeated runs leave nothing behind
-$form.Add_FormClosed({
-    foreach ($file in $script:tempFiles) {
-        try { if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force } } catch { }
+# timers
+$script:opTimer = New-Object System.Windows.Forms.Timer
+$script:opTimer.Interval = 300
+$script:opTimer.Add_Tick({
+    if ($null -ne $script:opProc -and $script:opProc.HasExited) {
+        $code = $script:opProc.ExitCode
+        if ($code -ne 0) { $script:opFailures += $script:opQueue[$script:opIndex].Name }
+        $script:opProc = $null
+        if ($script:opKind -ne 'upgrade') { $Bar.Value = $script:opIndex + 1 }
+        $script:opIndex++
+        Start-NextOp
     }
-    if ($script:activeNotify) { $script:activeNotify.Dispose() }
 })
 
-$form.ShowDialog() | Out-Null
+$script:discTimer = New-Object System.Windows.Forms.Timer
+$script:discTimer.Interval = 500
+$script:discTimer.Add_Tick({
+    if ($null -ne $script:discJob -and $script:discJob.State -eq 'Completed') {
+        $script:discTimer.Stop()
+        $out = Receive-Job $script:discJob | Out-String
+        Remove-Job $script:discJob -Force
+        Invoke-Discovery -Output $out
+    }
+})
+
+$script:countTimer = New-Object System.Windows.Forms.Timer
+$script:countTimer.Interval = 400
+$script:countTimer.Add_Tick({ Update-Count })
+$script:countTimer.Start()
+
+# ---------------------------------------------------------------- go
+
+Set-Lang $script:Lang
+Start-Discovery
+[void]$win.ShowDialog()
+try { $script:notify.Dispose() } catch { }
