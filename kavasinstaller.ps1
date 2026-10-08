@@ -29,7 +29,7 @@ $translations = @{
         "Utilities" = "Utilities";
         "Virtualization" = "Virtualization";
         "Security" = "Security";
-        "Dependencices" = "Dependencies";
+        "Dependencies" = "Dependencies";
         "Title" = "Kavas Installer $appVersion";
         "Install" = "Install";
         "Complete" = "Installation Complete";
@@ -42,6 +42,13 @@ $translations = @{
         "Load" = "Load selected apps from JSON file";
         "Import" = "▼ Import";
         "Export" = "▲ Export";
+        "Placeholder" = "Start typing to search";
+        "All" = "All";
+        "Upgrade" = "Upgrade";
+        "UpgradeComplete" = "Update Complete";
+        "Upgrading" = "Updating";
+        "NothingToUpgrade" = "No installed applications found to update.";
+        "NotificationTitle" = "Some installations failed";
     }
     "tr-TR" = @{
         "Compression" = "Sıkıştırma";
@@ -69,6 +76,13 @@ $translations = @{
         "Load" = "Seçilen uygulamaları JSON'dan yükle";
         "Import" = "▼ İçe Aktar";
         "Export" = "▲ Dışa Aktar";
+        "Placeholder" = "Aramak için yazmaya başlayın";
+        "All" = "Tümü";
+        "Upgrade" = "Güncelle";
+        "UpgradeComplete" = "Güncelleme Tamamlandı";
+        "Upgrading" = "Güncelleniyor";
+        "NothingToUpgrade" = "Güncellenecek yüklü uygulama bulunamadı.";
+        "NotificationTitle" = "Bazı yüklemeler başarısız oldu";
     }
 }
 
@@ -87,6 +101,9 @@ function Get-LocalizedText {
     }
 }
 
+# Temp files downloaded at runtime are tracked here so they can be cleaned up on exit
+$script:tempFiles = @()
+
 function Get-Image {
     param (
         [string]$url
@@ -94,8 +111,32 @@ function Get-Image {
     $tempFilePath = [System.IO.Path]::GetTempFileName()
     $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $url -OutFile $tempFilePath
+    $script:tempFiles += $tempFilePath
 
     return $tempFilePath
+}
+
+# Animated warning notification shown briefly without blocking the UI
+function Show-Notification {
+    param (
+        [string]$Message
+    )
+    try {
+        $notify = New-Object System.Windows.Forms.NotifyIcon
+        $notify.Icon = [System.Drawing.SystemIcons]::Warning
+        $notify.Visible = $true
+        $notify.ShowBalloonTip(5000, $(Get-LocalizedText -key 'NotificationTitle'), $Message, [System.Windows.Forms.ToolTipIcon]::Warning)
+        $script:activeNotify = $notify
+        $notifyTimer = New-Object System.Windows.Forms.Timer
+        $notifyTimer.Interval = 6000
+        $notifyTimer.Add_Tick({
+            $notifyTimer.Stop()
+            if ($script:activeNotify) { $script:activeNotify.Dispose(); $script:activeNotify = $null }
+        })
+        $notifyTimer.Start()
+    } catch {
+        # Notification is best-effort; never break the installer because of it
+    }
 }
 
 function Save-File($selectedApps) {
@@ -104,8 +145,8 @@ function Save-File($selectedApps) {
 
     # Set the properties of the SaveFileDialog
     $saveFileDialog.Title = "Save File"
-    $saveFileDialog.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
-    $saveFileDialog.DefaultExt = "txt"
+    $saveFileDialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
+    $saveFileDialog.DefaultExt = "json"
     $saveFileDialog.AddExtension = $true
 
     if ($saveFileDialog.ShowDialog() -eq 'OK') {
@@ -334,7 +375,8 @@ $groupedApplications = $apps | ConvertFrom-Json
 
 $categoryPerColumn = 3
 
-$columnsNeeded = [math]::Floor($groupedApplications.Count / $categoryPerColumn)
+# Integer division rounds up so the last category never overflows into a phantom column
+$columnsNeeded = [math]::Ceiling($groupedApplications.Count / $categoryPerColumn)
 $columnWidth = 200 # Define column width
 $formWidth = ($columnWidth * $columnsNeeded) # Calculate form width based on columns needed
 
@@ -343,38 +385,57 @@ $xPos = 10
 $yPos = 10
 $columnHeight = 0
 
+# Create category filter
+$comboCategory = New-Object System.Windows.Forms.ComboBox
+$comboCategoryXPos = $formWidth
+$comboCategory.Location = New-Object System.Drawing.Point($comboCategoryXPos, $yPos)
+$comboCategory.Size = New-Object System.Drawing.Size(180, 22)
+$comboCategory.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$comboCategory.Items.Add((Get-LocalizedText -key 'All')) | Out-Null
+foreach ($g in $groupedApplications) { $comboCategory.Items.Add((Get-LocalizedText -key $g.Name)) | Out-Null }
+$comboCategory.SelectedIndex = 0
+$form.Controls.Add($comboCategory)
+
 # Create search box
 $searchBox = New-Object System.Windows.Forms.TextBox
 $searchBoxXPos = $formWidth
-$searchBox.Location = New-Object System.Drawing.Point($searchBoxXPos, $yPos)
+$searchBox.Location = New-Object System.Drawing.Point($searchBoxXPos, ($yPos + 27))
 $searchBox.Size = New-Object System.Drawing.Size(180, 20)
-#searchbox placeholder text
-$searchBox.Text = Get-LocalizedText -key 'Search'
 
-$searchBox.Add_TextChanged({
-    $searchText = $searchBox.Text.ToLower()
-    # if search text is empty, reset the font to regular
-    if ($searchText -eq "") {
-        foreach ($checkbox in $checkboxes) {
-            # if font is already regular, skip
-            if ($checkbox.Font.Bold -eq $false) {
-                continue
-            }
-            $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Regular)
-        }
-    } else {
-        # Check if the checkbox text contains the search text, if so, make the font bold
-        foreach ($checkbox in $checkboxes) {
-            if ($checkbox.Text.ToLower().Contains($searchText)) {
-                $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Bold)
-            } else {
-                $checkbox.Font = New-Object System.Drawing.Font($checkbox.Font, [System.Drawing.FontStyle]::Regular)
-            }
-        }
+# Placeholder text handled explicitly so it is never treated as a real query
+$script:placeholderText = Get-LocalizedText -key 'Placeholder'
+$searchBox.Text = $script:placeholderText
+$searchBox.ForeColor = [System.Drawing.Color]::Gray
+$searchBox.Add_Enter({
+    if ($searchBox.Text -eq $script:placeholderText) {
+        $searchBox.Text = ""
+        $searchBox.ForeColor = [System.Drawing.Color]::Black
     }
-
-    
 })
+$searchBox.Add_Leave({
+    if ([string]::IsNullOrWhiteSpace($searchBox.Text)) {
+        $searchBox.Text = $script:placeholderText
+        $searchBox.ForeColor = [System.Drawing.Color]::Gray
+    }
+})
+
+# Each checkbox is mapped to its localized category so filtering can use both
+$script:checkboxCategory = @{}
+
+# Filtering only toggles visibility, so selections survive filtering
+$script:ApplyFilter = {
+    $query = ""
+    if ($script:searchBox.Text -ne $script:placeholderText) { $query = $script:searchBox.Text.ToLower() }
+    $allCategories = ($script:comboCategory.SelectedIndex -eq 0)
+    $selectedCat = $script:comboCategory.SelectedItem
+    foreach ($cb in $checkboxes) {
+        $matchesCat = $allCategories -or ($script:checkboxCategory[$cb] -eq $selectedCat)
+        $matchesTxt = ($query -eq "") -or ($cb.Text.ToLower().Contains($query))
+        $cb.Visible = ($matchesCat -and $matchesTxt)
+    }
+}
+$searchBox.Add_TextChanged({ & $script:ApplyFilter })
+$comboCategory.Add_SelectedIndexChanged({ & $script:ApplyFilter })
 $form.Controls.Add($searchBox)
 
 $yPos += 60
@@ -421,6 +482,7 @@ foreach ($group in $groupedApplications) {
         $form.Controls.Add($checkbox)
         $yPos += 20
         $checkboxes += $checkbox
+        $script:checkboxCategory[$checkbox] = Get-LocalizedText -key $group.Name
     }
 
     $yPos += 10 # Add some space before the next category
@@ -484,9 +546,67 @@ $buttonInstall.ForeColor = [System.Drawing.Color]::White
 $buttonInstall.Font = New-Object System.Drawing.Font($buttonInstall.Font, [System.Drawing.FontStyle]::Bold)
 $form.Controls.Add($buttonInstall)
 
+# Resolve winget to a full path so background processes can start it reliably
+$wingetPath = (Get-Command winget -ErrorAction SilentlyContinue).Source
+
+# Queue state used to install one app at a time without blocking the UI thread
+$script:installQueue = @()
+$script:installIndex = 0
+$script:currentProc = $null
+$script:failedApps = @()
+
+function Start-NextInstall {
+    if ($script:installIndex -ge $script:installQueue.Count) {
+        # All apps processed
+        $script:pollTimer.Stop()
+        $script:currentProc = $null
+        $buttonInstall.Enabled = $true
+        $buttonLoad.Enabled = $true
+        $buttonSave.Enabled = $true
+        if ($script:failedApps.Count -gt 0) {
+            $failedList = ($script:failedApps -join ", ")
+            $installingLabel.Text = Get-LocalizedText -key 'Complete'
+            [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key 'Complete') + "`n" + (Get-LocalizedText -key 'NotificationTitle') + ": " + $failedList)
+        } else {
+            $installingLabel.Text = Get-LocalizedText -key 'Complete'
+            [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key 'Complete'))
+        }
+        return
+    }
+
+    $app = $script:installQueue[$script:installIndex]
+    $installingLabel.Text = "[$($script:installIndex + 1)/$($script:installQueue.Count)] $(Get-LocalizedText -key 'Installing'): $($app.Name)"
+
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo.FileName = $wingetPath
+    # --accept flags suppress prompts; --disable-interactivity keeps output small
+    $p.StartInfo.Arguments = "install `"$($app.ID)`" --accept-package-agreements --accept-source-agreements --silent --disable-interactivity"
+    $p.StartInfo.UseShellExecute = $false
+    $p.StartInfo.CreateNoWindow = $true
+    [void]$p.Start()
+    $script:currentProc = $p
+}
+
+# Poll the running process on the UI thread; UI stays responsive between ticks
+$script:pollTimer = New-Object System.Windows.Forms.Timer
+$script:pollTimer.Interval = 300
+$script:pollTimer.Add_Tick({
+    if ($null -ne $script:currentProc -and $script:currentProc.HasExited) {
+        $exitCode = $script:currentProc.ExitCode
+        $app = $script:installQueue[$script:installIndex]
+        if ($exitCode -ne 0) {
+            $script:failedApps += $app.Name
+            Show-Notification ("$($app.Name) ($exitCode)")
+        }
+        $progressBar.PerformStep()
+        $script:installIndex++
+        $script:currentProc = $null
+        Start-NextInstall
+    }
+})
+
 # Add an event handler for the install button click
 $buttonInstall.Add_Click({
-    $buttonInstall.Enabled = $false
     # Initialize an array to hold selected applications
     $selectedApps = @()
 
@@ -499,20 +619,19 @@ $buttonInstall.Add_Click({
 
     # Check if any applications were selected
     if ($selectedApps.Count -gt 0) {
+        $buttonInstall.Enabled = $false
+        $buttonLoad.Enabled = $false
+        $buttonSave.Enabled = $false
+        $script:failedApps = @()
         $progressBar.Value = 0
         $progressBar.Maximum = $selectedApps.Count
-        foreach ($app in $selectedApps) {
-            # Update label with the current installing application's name
-            $installingLabel.Text = "[$($ProgressBar.Value + 1)/$($selectedApps.Count)] $(Get-LocalizedText -key 'Installing'): $($app.Name)"
-            winget.exe install $app.ID --accept-package-agreements
-            $progressBar.PerformStep()
-        }
-        [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "Complete"))
-        $installingLabel.Text = Get-LocalizedText -key "Complete"
+        $script:installQueue = $selectedApps
+        $script:installIndex = 0
+        $script:pollTimer.Start()
+        Start-NextInstall
     } else {
         [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key "NoSelection"))
     }
-    $buttonInstall.Enabled = $true
 })
 
 $form.Controls.Add($buttonInstall)
@@ -548,17 +667,20 @@ $toolTip.SetToolTip($buttonLoad, $(Get-LocalizedText -key 'Load'))
 $buttonLoad.Add_Click({
     $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
     $openFileDialog.Title = "Open File"
-    $openFileDialog.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
-    $openFileDialog.DefaultExt = "txt"
+    $openFileDialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
+    $openFileDialog.DefaultExt = "json"
     $openFileDialog.AddExtension = $true
 
     if ($openFileDialog.ShowDialog() -eq 'OK') {
-        $selectedApps = Get-Content -Path $openFileDialog.FileName | ConvertFrom-Json
+        $selectedApps = Get-Content -Path $openFileDialog.FileName -Raw | ConvertFrom-Json
         foreach ($app in $selectedApps) {
-            $form.Controls | Where-Object { $_ -is [System.Windows.Forms.CheckBox] -and $_.Tag -eq $app.ID } | ForEach-Object {
-                $_.Checked = $true
+            foreach ($cb in $checkboxes) {
+                if ($cb.Tag -eq $app.ID) { $cb.Checked = $true }
             }
         }
+        # Reset the filter so the newly checked apps are visible
+        $comboCategory.SelectedIndex = 0
+        if ($searchBox.Text -ne $script:placeholderText) { $searchBox.Text = "" }
     }
 })
 $form.Controls.Add($buttonLoad)
@@ -601,10 +723,75 @@ $buttonSave.Add_Click({
 })
 $form.Controls.Add($buttonSave)
 
-# Add button which named "Recommended". It will select recommended apps.
+# Add an upgrade button: updates every installed app that has a newer version
+$buttonUpgrade = New-Object System.Windows.Forms.Button
+$buttonUpgrade.Text = Get-LocalizedText -key 'Upgrade'
+$buttonUpgrade.Location = New-Object System.Drawing.Point(($buttonInstallLocation + 110), $yPos)
+$buttonUpgrade.Size = New-Object System.Drawing.Size(90, 50)
+$buttonUpgrade.BackColor = [System.Drawing.Color]::Transparent
+$buttonUpgrade.ForeColor = [System.Drawing.Color]::White
+$buttonUpgrade.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$buttonUpgrade.FlatAppearance.BorderSize = 0
+$buttonUpgrade.Font = New-Object System.Drawing.Font($buttonUpgrade.Font, [System.Drawing.FontStyle]::Bold)
+$form.Controls.Add($buttonUpgrade)
 
+# Output of the upgrade process is buffered here to detect "nothing to update"
+$script:upgradeProc = $null
+$script:upgradeTimer = New-Object System.Windows.Forms.Timer
+$script:upgradeTimer.Interval = 300
+$script:upgradeTimer.Add_Tick({
+    if ($null -ne $script:upgradeProc -and $script:upgradeProc.HasExited) {
+        $script:upgradeTimer.Stop()
+        $script:upgradeProc = $null
+        $progressBar.Style = 'Continuous'
+        $buttonInstall.Enabled = $true
+        $buttonUpgrade.Enabled = $true
+        $buttonLoad.Enabled = $true
+        $buttonSave.Enabled = $true
+        $installingLabel.Text = Get-LocalizedText -key 'UpgradeComplete'
+        [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key 'UpgradeComplete'))
+    }
+})
+
+$buttonUpgrade.Add_Click({
+    $buttonInstall.Enabled = $false
+    $buttonUpgrade.Enabled = $false
+    $buttonLoad.Enabled = $false
+    $buttonSave.Enabled = $false
+    $installingLabel.Text = Get-LocalizedText -key 'Upgrading'
+
+    # Quick check for pending upgrades (short-lived, keeps the message accurate)
+    $pending = winget upgrade --accept-source-agreements 2>&1 | Out-String
+    if ($pending -match 'No installed package|No applicable upgrade|0 package\(s\)') {
+        $installingLabel.Text = Get-LocalizedText -key 'NothingToUpgrade'
+        [System.Windows.Forms.MessageBox]::Show((Get-LocalizedText -key 'NothingToUpgrade'))
+        $buttonInstall.Enabled = $true
+        $buttonUpgrade.Enabled = $true
+        $buttonLoad.Enabled = $true
+        $buttonSave.Enabled = $true
+        return
+    }
+
+    $progressBar.Style = 'Marquee'
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo.FileName = $wingetPath
+    $p.StartInfo.Arguments = "upgrade --all --include-unknown --accept-package-agreements --accept-source-agreements --silent --disable-interactivity"
+    $p.StartInfo.UseShellExecute = $false
+    $p.StartInfo.CreateNoWindow = $true
+    [void]$p.Start()
+    $script:upgradeProc = $p
+    $script:upgradeTimer.Start()
+})
 
 $form.Width = $formWidth + 200
-$form.Height = $yPos + 70
+$form.Height = $yPos + 130
+
+# Remove downloaded temp images so repeated runs leave nothing behind
+$form.Add_FormClosed({
+    foreach ($file in $script:tempFiles) {
+        try { if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force } } catch { }
+    }
+    if ($script:activeNotify) { $script:activeNotify.Dispose() }
+})
 
 $form.ShowDialog() | Out-Null
