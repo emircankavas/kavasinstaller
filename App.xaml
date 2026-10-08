@@ -160,30 +160,8 @@
       </Setter>
     </Style>
 
-    <!-- Search box -->
-    <Style x:Key="SearchBox" TargetType="TextBox">
-      <Setter Property="Background" Value="#141922"/>
-      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-      <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-      <Setter Property="Padding" Value="10,8"/>
-      <Setter Property="VerticalContentAlignment" Value="Center"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="TextBox">
-            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="9" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
-            </Border>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
+    <!-- Search box styling (TextBox border/rounded corners live on its shell Border in the layout;
+         a custom TextBox template here broke the caret/text rendering, so it is deliberately absent) -->
 
     <!-- Modern checkbox -->
     <Style x:Key="CardCheck" TargetType="CheckBox">
@@ -316,8 +294,20 @@
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Grid Grid.Column="0">
-              <TextBox x:Name="SearchBox" Style="{StaticResource SearchBox}" Height="38"/>
-              <TextBlock x:Name="SearchPlaceholder" IsHitTestVisible="False" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="#5C667A" Text=""/>
+              <Border x:Name="SearchShell" Height="38" Background="#141922" CornerRadius="9" BorderThickness="1">
+                <Border.Style>
+                  <Style TargetType="Border">
+                    <Setter Property="BorderBrush" Value="#242B36"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=SearchBox}" Value="True">
+                        <Setter Property="BorderBrush" Value="#4C8DFF"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Border.Style>
+                <TextBox x:Name="SearchBox" Background="Transparent" BorderThickness="0" Foreground="#E7ECF3" CaretBrush="#4C8DFF" Padding="12,0" VerticalContentAlignment="Center" FontSize="13"/>
+              </Border>
+              <TextBlock x:Name="SearchPlaceholder" IsHitTestVisible="False" Margin="14,0,0,0" VerticalAlignment="Center" Foreground="#5C667A" Text=""/>
             </Grid>
             <TextBlock x:Name="SelectedCount" Grid.Column="1" VerticalAlignment="Center" Margin="14,0,14,0" Foreground="{StaticResource SubTextBrush}" FontSize="12"/>
             <Button x:Name="BtnClear" Grid.Column="2" Style="{StaticResource GhostBtn}" Margin="0,0,8,0"/>
